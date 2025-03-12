@@ -15,6 +15,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
 }) => {
   const [loading, setLoading] = useState(true);
   const [animate, setAnimate] = useState(true);
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
   const [logoMove, setLogoMove] = useState(false);
   const [logoColorChange, setLogoColorChange] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -23,7 +24,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [showFormLoginAnimated, setShowFormLoginAnimated] = useState(false);
   const [showRegisterForm, setShowRegisterForm] = useState(false);
-  const [showFormRegisterAnimated, setShowFormRegisterAnimated] = useState(false);
+  const [showFormRegisterAnimated, setShowFormRegisterAnimated] =
+    useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -67,12 +69,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
 
   const handleLogin = async () => {
     try {
-      const response = await fetch("http://localhost:8080/api/auth/login", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username, password })
+      const response = await fetch(`${backendUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
       });
 
       if (response.ok) {
@@ -92,17 +92,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
       alert("Semua field harus diisi!");
       return;
     }
-  
-    const response = await fetch("http://localhost:8080/api/auth/register", {
+
+    const response = await fetch(`${backendUrl}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, email, password, phoneNumber }),
     });
-  
+
     const data = await response.text();
-    alert(data); // Debugging, tampilkan respon dari backend
+    alert(data);
   };
-  
 
   const handleShowRegister = () => {
     setShowFormLoginAnimated(false);
