@@ -1,4 +1,4 @@
-import { Login } from "../data/Login"; // Pastikan path relatif benar
+import { Login } from "../data/Login"; // path relatif benar
 import logoKuning from "./image/logo kuning.svg"; // Logo kuning
 import logoPutih from "./image/logo putih.svg"; // Logo putih
 import { useState, useEffect } from "react";
@@ -67,6 +67,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
     }, 500);
   };
 
+  const [role, setRole] = useState(""); // Tambahkan state untuk role
   const handleLogin = async () => {
     try {
       const response = await fetch(`${backendUrl}/api/auth/login`, {
@@ -76,9 +77,21 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
       });
 
       if (response.ok) {
+        const data = await response.json();
         setIsLoggedIn(true);
-        setIsAdmin(true);
-        navigate("/beranda");
+        setRole(data.role); // Simpan role dari respons backend
+
+        console.log(
+          "Navigasi ke:",
+          data.role === "ADMIN" ? "/Beranda" : "/Home2"
+        );
+        if (data.role === "ADMIN") {
+          setIsAdmin(true);
+          navigate("/Beranda"); // Arahkan ke halaman admin
+        } else {
+          setIsAdmin(false);
+          navigate("/Home2"); // Arahkan ke halaman user biasa
+        }
       } else {
         setError("Login gagal, periksa kembali username dan password");
       }
@@ -187,7 +200,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
               : "opacity-0 translate-y-20"
           }`}
         >
-          <h1 className="text-[49.312px] font-bold font-poppins leading-normal text-black text-left">
+          <h1
+            className="text-[49.312px] font-bold leading-normal text-black text-left"
+            style={{ fontFamily: "Montserrat, sans-serif" }}
+          >
             Welcome
           </h1>
 

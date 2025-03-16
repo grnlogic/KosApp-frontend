@@ -1,9 +1,7 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import NavItem from "./NavItem";
-import { LogOut, User } from "lucide-react"; // Tambahkan User
-import Nofication from "./component/notification"; // Tambahkan Notification
-import Profile from "./component/Profile"; // Tambahkan Profile
+import { LogOut, User } from "lucide-react";
 
 const HomeIcon = (
   <svg
@@ -31,24 +29,24 @@ const Navbar = ({
   const navigate = useNavigate();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-white border-b border-orange-100 px-4 py-2 z-50">
+    <nav className="fixed top-0 left-0 right-0 bg-orange-500 text-white shadow-md px-4 py-3 z-50">
       <div className="flex justify-between items-center">
         {/* Logo */}
         <div className="flex items-center space-x-4">
-          <span className="font-bold text-gray-700">MiminKost</span>
+          <span className="font-bold text-xl">MiminKost</span>
         </div>
 
         {/* Navigation Items */}
         <div className="flex items-center space-x-4">
           <NavItem
             icon={HomeIcon} // icon home
-            isActive={location.pathname === "/"}
+            isActive={location.pathname === "/home"}
             onClick={() => navigate("/home")}
           />
           <NavItem
             icon={<User size={24} />} // icon user
             isActive={location.pathname === "/profile"}
-            onClick={() => navigate("/Profile")}
+            onClick={() => navigate("/profile")}
           />
           <NavItem
             icon={<LogOut size={24} />} // icon logout

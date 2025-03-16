@@ -1,46 +1,66 @@
-# Getting Started with Create React App
+# Dalam tahap pengembangan
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Manajemen Kost
 
-## Available Scripts
+Aplikasi **Manajemen Kost** bertujuan untuk mempermudah pengelolaan kos-kosan, termasuk manajemen penghuni, pembayaran, dan tugas terkait pengelolaan kost. Aplikasi ini menggunakan **React (TSX)** untuk frontend dan **Spring Boot** untuk backend.
 
-In the project directory, you can run:
 
-### `npm start`
+# Manajemen Kost - Frontend
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## 📌 Deskripsi
+Frontend aplikasi **Manajemen Kost** yang dikembangkan menggunakan **React (TSX)** dan **Tailwind CSS**. Aplikasi ini memungkinkan pemilik dan penyewa kos untuk mengelola hunian mereka dengan lebih mudah.
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## 🛠 Teknologi yang Digunakan
+- **React (TSX)** – Framework utama untuk frontend
+- **Tailwind CSS** – Styling yang fleksibel dan efisien
+- **React Router** – Routing antar halaman
+- **Axios** – HTTP request ke backend
+- **Vite** – Pengelolaan proyek React dengan performa tinggi
 
-### `npm test`
+## 🚀 Instalasi dan Menjalankan Aplikasi
+### 1️⃣ Clone Repository
+```bash
+git clone https://github.com/username/manajemen-kost-frontend.git
+cd manajemen-kost-frontend
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 2️⃣ Install Dependencies
+```bash
+npm install
+```
 
-### `npm run build`
+### 3️⃣ Konfigurasi Environment
+Buat file **.env** di root proyek dan tambahkan konfigurasi berikut:
+```
+VITE_API_BASE_URL=http://localhost:8080/api
+```
+(Sesuaikan dengan URL backend jika sudah di-deploy)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### 4️⃣ Jalankan Aplikasi
+```bash
+npm run dev
+```
+Aplikasi akan berjalan di `http://localhost:5173/`.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 📁 Struktur Direktori
+```plaintext
+manajemen-kost-frontend/
+├── src/
+│   ├── components/   # Komponen UI
+│   ├── pages/        # Halaman utama aplikasi
+│   ├── hooks/        # Custom hooks
+│   ├── utils/        # Utility/helper functions
+│   ├── assets/       # File statis seperti gambar
+│   └── styles/       # Styling dengan Tailwind CSS
+└── public/           # File statis publik
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 🔧 Pengembangan
+Jika ingin berkontribusi:
+1. **Fork** repository ini.
+2. Buat **branch baru** (`feature/nama-fitur`).
+3. Lakukan **commit** dan **push** perubahan ke branch tersebut.
+4. Buat **Pull Request** untuk review.
 
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 📜 Lisensi
+Proyek ini dilisensikan di bawah **MIT License**. Lihat file `LICENSE` untuk informasi lebih lanjut.
