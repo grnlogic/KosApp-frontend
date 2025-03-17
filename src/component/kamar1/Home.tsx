@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import InfoKamar from "./InfoKamar"; // Konten default
 import Pembayaran from "./pembayaran";
 import JadwalKebersihan from "./JadwalKebersihan";
@@ -6,10 +6,28 @@ import FAQ from "./FAQ";
 import { Calendar, CreditCard, HelpCircle, Key } from "lucide-react";
 import backbutton from "../image/chevron-right.svg";
 import Notification from "../notification";
+import { useNavigate } from "react-router-dom";
 
-const Home = () => {
-  // Ubah nilai awal state activeContent menjadi "notification"
+const Home1 = () => {
+  const navigate = useNavigate();
+  const [roomId, setRoomId] = useState<string | null>(null);
   const [activeContent, setActiveContent] = useState<string>("notification");
+
+  useEffect(() => {
+    const storedRoomId = localStorage.getItem("roomId");
+
+    // Jika belum memilih kamar, arahkan ke halaman pemilihan
+    if (!storedRoomId || storedRoomId === "Belum memilih kamar") {
+      navigate("/choose-room");
+    } else {
+      setRoomId(storedRoomId);
+
+      // ✅ Redirect user ke halaman kamar yang sesuai
+      if (storedRoomId !== "1") {
+        navigate(`/home${storedRoomId}`); // Misal user di Home1 tapi roomId = 2, redirect ke Home2
+      }
+    }
+  }, [navigate]);
 
   // Fungsi untuk memilih konten yang akan dirender
   const renderContent = () => {
@@ -98,4 +116,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default Home1;

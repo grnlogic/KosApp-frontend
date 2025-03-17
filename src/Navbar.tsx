@@ -16,14 +16,16 @@ const HomeIcon = (
     strokeLinejoin="round"
   >
     <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path>
-    <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+    <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
   </svg>
 );
 
 const Navbar = ({
   setIsLoggedIn,
+  roomId,
 }: {
   setIsLoggedIn: (value: boolean) => void;
+  roomId: string; // Tambahkan prop roomId
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -40,13 +42,13 @@ const Navbar = ({
         <div className="flex items-center space-x-4">
           <NavItem
             icon={HomeIcon} // icon home
-            isActive={location.pathname === "/home"}
-            onClick={() => navigate("/home")}
+            isActive={location.pathname === `/room/${roomId}/home`}
+            onClick={() => navigate(`/room/${roomId}/home`)} // Navigasi ke home sesuai roomId
           />
           <NavItem
             icon={<User size={24} />} // icon user
-            isActive={location.pathname === "/profile"}
-            onClick={() => navigate("/profile")}
+            isActive={location.pathname === `/room/${roomId}/profile`}
+            onClick={() => navigate(`/room/${roomId}/profile`)} // Navigasi ke profile sesuai roomId
           />
           <NavItem
             icon={<LogOut size={24} />} // icon logout

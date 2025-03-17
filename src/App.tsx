@@ -8,7 +8,7 @@ import {
 } from "react-router-dom";
 import ProtectedRoute from "./data/ProtectedRoute";
 import Profile from "./component/Profile";
-import Navbar from "./Navbar"; // Menggunakan Navbar.tsx
+import Navbar from "./Navbar";
 import LoginScreen from "./component/LoginScreen";
 import Notification from "./component/notification";
 
@@ -57,11 +57,15 @@ const Layout = ({
   isLoggedIn,
   isAdmin,
   setIsAdmin,
+  roomId,
+  setRoomId,
 }: {
   setIsLoggedIn: React.Dispatch<React.SetStateAction<boolean>>;
   isLoggedIn: boolean;
   isAdmin: boolean;
   setIsAdmin: React.Dispatch<React.SetStateAction<boolean>>;
+  roomId: string;
+  setRoomId: React.Dispatch<React.SetStateAction<string>>;
 }) => {
   const location = useLocation();
 
@@ -87,7 +91,7 @@ const Layout = ({
     <>
       {/* Tampilkan Navbar hanya jika bukan di rute admin */}
       {!isAdminRoute && location.pathname !== "/" && (
-        <Navbar setIsLoggedIn={setIsLoggedIn} />
+        <Navbar setIsLoggedIn={setIsLoggedIn} roomId={roomId} />
       )}
       <div className="pt-0">
         <Routes>
@@ -95,8 +99,9 @@ const Layout = ({
             path="/"
             element={
               <LoginScreen
-                setIsLoggedIn={setIsLoggedIn}
+                setRoomId={setRoomId}
                 setIsAdmin={setIsAdmin}
+                setIsLoggedIn={setIsLoggedIn} // Pass setIsLoggedIn
               />
             }
           />
@@ -162,11 +167,12 @@ const Layout = ({
 };
 
 const App = () => {
+  
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [roomId, setRoomId] = useState<string>(""); // Tambahkan state roomId
 
-  // Cek environment variable
-  console.log("Backend URL:", process.env.REACT_APP_BACKEND_URL);
+  console.log("setRoomId di App", roomId);
 
   return (
     <Router>
@@ -175,6 +181,8 @@ const App = () => {
         isLoggedIn={isLoggedIn}
         isAdmin={isAdmin}
         setIsAdmin={setIsAdmin}
+        roomId={roomId} // Berikan roomId ke Layout
+        setRoomId={setRoomId}
       />
     </Router>
   );

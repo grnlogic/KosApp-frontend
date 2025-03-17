@@ -1,3 +1,4 @@
+import { Atom, FourSquare } from "react-loading-indicators";
 import { Login } from "../data/Login"; // path relatif benar
 import logoKuning from "./image/logo kuning.svg"; // Logo kuning
 import logoPutih from "./image/logo putih.svg"; // Logo putih
@@ -5,15 +6,22 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; // Gunakan navigasi React Router
 
 interface LoginScreenProps {
-  setIsLoggedIn: React.Dispatch<React.SetStateAction<boolean>>;
-  setIsAdmin: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsLoggedIn: (value: boolean) => void;
+  setIsAdmin: (value: boolean) => void;
+  setRoomId: (id: string) => void; // Tambahkan ini
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({
+const LoginScreen = ({
   setIsLoggedIn,
   setIsAdmin,
+  setRoomId, // Tambahkan ini
+}: {
+  setIsLoggedIn: (value: boolean) => void;
+  setIsAdmin: (value: boolean) => void;
+  setRoomId: (id: string) => void; // Tambahkan ini
 }) => {
   const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [animate, setAnimate] = useState(true);
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
   const [logoMove, setLogoMove] = useState(false);
@@ -69,7 +77,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
 
   const [role, setRole] = useState(""); // Tambahkan state untuk role
   const handleLogin = async () => {
+    setIsLoading(true); // Mulai animasi loading
     try {
+      // Simulasikan durasi animasi loading selama 4 detik
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       const response = await fetch(`${backendUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,24 +91,21 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
       if (response.ok) {
         const data = await response.json();
         setIsLoggedIn(true);
-        setRole(data.role); // Simpan role dari respons backend
-
-        console.log(
-          "Navigasi ke:",
-          data.role === "ADMIN" ? "/Beranda" : "/Home2"
-        );
+        setRoomId(data.roomId); // Setel roomId dari respons backend
         if (data.role === "ADMIN") {
           setIsAdmin(true);
           navigate("/Beranda"); // Arahkan ke halaman admin
         } else {
           setIsAdmin(false);
-          navigate("/Home2"); // Arahkan ke halaman user biasa
+          navigate(`/room/${data.roomId}/home`); // Arahkan ke halaman user biasa
         }
       } else {
         setError("Login gagal, periksa kembali username dan password");
       }
     } catch (error) {
       setError("Terjadi kesalahan saat login. Silakan coba lagi.");
+    } finally {
+      setIsLoading(false); // Hentikan animasi loading
     }
   };
 
@@ -144,6 +153,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
         showLoginForm || showRegisterForm ? "bg-[#FEBF00]" : "bg-white"
       }`}
     >
+      {/* Overlay Loading */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          {/* Animasi Loading */}
+          <div className="flex flex-col items-center">
+            <Atom color="#32cd32" size="medium" text="" textColor="" />
+          </div>
+        </div>
+      )}
       {/* Lingkaran Kuning di Kanan Atas */}
       {!showLoginForm && !showRegisterForm && (
         <div className="relative w-full h-screen">
@@ -252,10 +270,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
               />
 
               <button
-                className="mt-4 px-12 py-4 bg-black text-white rounded-lg w-full max-w-xs"
+                className={`mt-4 px-12 py-4 ${
+                  isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-black"
+                } text-white rounded-lg w-full max-w-xs`}
                 onClick={handleLogin}
+                disabled={isLoading}
               >
-                Log In
+                {isLoading ? "Loading..." : "Log In"}
               </button>
 
               <button
