@@ -23,11 +23,15 @@ const Home1 = () => {
       setRoomId(storedRoomId);
 
       // ✅ Redirect user ke halaman kamar yang sesuai
-      if (storedRoomId !== "1") {
-        navigate(`/home${storedRoomId}`); // Misal user di Home1 tapi roomId = 2, redirect ke Home2
+      if (storedRoomId !== "1" && storedRoomId !== "Belum memilih kamar") {
+        navigate(`/Home${storedRoomId}`); // Misal user di Home1 tapi roomId = 2, redirect ke Home2
       }
     }
   }, [navigate]);
+
+  if (!roomId) {
+    return <p className="text-center mt-6">Loading...</p>; // ✅ Tambahkan loading state
+  }
 
   // Fungsi untuk memilih konten yang akan dirender
   const renderContent = () => {
@@ -47,7 +51,13 @@ const Home1 = () => {
     }
   };
 
-  const MenuButton = ({ icon, text }: { icon: React.JSX.Element; text: string }) => {
+  const MenuButton = ({
+    icon,
+    text,
+  }: {
+    icon: React.JSX.Element;
+    text: string;
+  }) => {
     return (
       <button className="flex flex-col items-center justify-center bg-[#FEBF00] border border-gray-300 rounded-lg p-4 shadow-md transition-transform hover:scale-105 hover:shadow-lg w-full max-w-[150px] h-[150px] font-bold">
         {/* Ikon dengan warna kuning dan ukuran seragam */}
@@ -106,6 +116,17 @@ const Home1 = () => {
         >
           FAQ
         </button>
+        <button
+          onClick={() => setActiveContent("notification")}
+          className="bg-[#FEBF00] border border-gray-300 rounded-lg text-white p-3 shadow-md w-full col-span-2 h-[100px] font-bold"
+        >
+          Notification
+        </button>
+      </div>
+        
+      {/* Area Konten Dinamis */}
+      <div className="w-full mt-6 p-4  rounded-lg max-w-2xl min-h-[300px]">
+        {renderContent()}
       </div>
 
       {/* Area Konten Dinamis */}

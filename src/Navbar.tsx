@@ -29,7 +29,6 @@ const Navbar = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
-
   return (
     <nav className="fixed top-0 left-0 right-0 bg-orange-500 text-white shadow-md px-4 py-3 z-50">
       <div className="flex justify-between items-center">
@@ -42,13 +41,14 @@ const Navbar = ({
         <div className="flex items-center space-x-4">
           <NavItem
             icon={HomeIcon} // icon home
-            isActive={location.pathname === `/room/${roomId}/home`}
-            onClick={() => navigate(`/room/${roomId}/home`)} // Navigasi ke home sesuai roomId
+            isActive={location.pathname === `/Home${roomId}`}
+            onClick={() => navigate(`/Home${roomId}`)} // Navigasi ke notification sesuai roomId
           />
+
           <NavItem
             icon={<User size={24} />} // icon user
-            isActive={location.pathname === `/room/${roomId}/profile`}
-            onClick={() => navigate(`/room/${roomId}/profile`)} // Navigasi ke profile sesuai roomId
+            isActive={location.pathname === `/Profile${roomId}`}
+            onClick={() => navigate(`/Profile${roomId}`)} // Navigasi ke profile sesuai roomId
           />
           <NavItem
             icon={<LogOut size={24} />} // icon logout

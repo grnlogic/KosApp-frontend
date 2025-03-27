@@ -90,14 +90,17 @@ const LoginScreen = ({
 
       if (response.ok) {
         const data = await response.json();
+        console.log("response", response);
+        console.log("Navigating to:", `/home${data.roomId}`); // Log rute yang akan digunakan
         setIsLoggedIn(true);
         setRoomId(data.roomId); // Setel roomId dari respons backend
+        localStorage.setItem("roomId", data.roomId); // Simpan roomId di local storage
         if (data.role === "ADMIN") {
           setIsAdmin(true);
           navigate("/Beranda"); // Arahkan ke halaman admin
         } else {
           setIsAdmin(false);
-          navigate(`/room/${data.roomId}/home`); // Arahkan ke halaman user biasa
+          navigate(`/home${data.roomId}`); // Arahkan ke halaman user biasa
         }
       } else {
         setError("Login gagal, periksa kembali username dan password");

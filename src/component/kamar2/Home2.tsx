@@ -105,6 +105,12 @@ const Home2 = () => {
         >
           FAQ
         </button>
+        <button
+          onClick={() => setActiveContent("notification")}
+          className="bg-[#FEBF00] border border-gray-300 rounded-lg text-white p-3 shadow-md w-full col-span-2 h-[100px] font-bold"
+        >
+          Notification
+        </button>
       </div>
 
       {/* Area Konten Dinamis */}
