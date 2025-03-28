@@ -11,6 +11,9 @@ import Navbar from "./Navbar";
 import LoginScreen from "./component/LoginScreen";
 import Notification from "./component/notification";
 import NotFound from "./component/NotFound";
+import LandingPage from "./component/Landingpage";
+//API Kamar
+import { RoomList } from "./component/App/Api/room";
 
 // Halaman Penghuni 1
 import Profile1 from "./component/kamar1/profile1";
@@ -78,12 +81,7 @@ const Layout = ({
 }) => {
   const location = useLocation();
 
-  const profileRoutes = [
-    "/profile1",
-    "/profile2",
-    "/profile3",
-    "/profile4",
-  ];
+  const profileRoutes = ["/profile1", "/profile2", "/profile3", "/profile4"];
 
   const profileComponents = {
     profile1: Profile1,
@@ -93,11 +91,9 @@ const Layout = ({
   };
 
   <Route
-  path="/room/:roomId/profile"
-  element={
-    <DynamicProfile profileComponents={profileComponents} />
-  }
-/>
+    path="/room/:roomId/profile"
+    element={<DynamicProfile profileComponents={profileComponents} />}
+  />;
   // Daftar rute admin
   const adminRoutes = [
     "/Beranda",
@@ -112,28 +108,36 @@ const Layout = ({
   // Periksa apakah rute saat ini adalah rute admin
   const isAdminRoute = adminRoutes.includes(location.pathname);
 
+  // Periksa apakah rute saat ini adalah Landingpage
+  const isLandingPage = location.pathname.toLowerCase() === "/landingpage";
+
   if (!isLoggedIn && location.pathname !== "/") {
     return <Navigate to="/" replace />;
   }
+ 
+console.log("Current Path:", location.pathname);
+console.log("isAdminRoute:", isAdminRoute);
+console.log("isLandingPage:", isLandingPage);
+console.log("Should Navbar Render:", !isAdminRoute && !isLandingPage && location.pathname !== "/");
 
-  return (
-    <>
-      {/* Tampilkan Navbar hanya jika bukan di rute admin */}
-      {!isAdminRoute && location.pathname !== "/" && (
-        <Navbar setIsLoggedIn={setIsLoggedIn} roomId={roomId} />
-      )}
-      <div className="pt-0">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <LoginScreen
-                setRoomId={setRoomId}
-                setIsAdmin={setIsAdmin}
-                setIsLoggedIn={setIsLoggedIn} // Pass setIsLoggedIn
-              />
-            }
-          />
+return (
+  <>
+    {/* Tampilkan Navbar hanya jika bukan di rute admin, LandingPage, atau halaman login */}
+    {!isAdminRoute && !isLandingPage && location.pathname !== "/" && (
+      <Navbar setIsLoggedIn={setIsLoggedIn} roomId={roomId} />
+    )}
+    <div className="pt-0">
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <LoginScreen
+              setRoomId={setRoomId}
+              setIsAdmin={setIsAdmin}
+              setIsLoggedIn={setIsLoggedIn}
+            />
+          }
+        />
           <Route
             element={
               <ProtectedRoute isLoggedIn={isLoggedIn} isAdmin={isAdmin} />
@@ -141,10 +145,8 @@ const Layout = ({
           >
             <Route path="*" element={<NotFound />} />
             <Route path="/register" element={<Register />} />
-            <Route
-              path="/room/:roomId/notification"
-              element={<Home />}
-            />
+            <Route path="/room/:roomId/notification" element={<Home />} />
+            <Route path="LandingPage" element={<LandingPage />} />
 
             {/* Rute penghuni 1 */}
             <Route path="/profile1" element={<Profile1 />} />

@@ -94,6 +94,16 @@ const Beranda = () => {
         </div>
         <p className="text-start mt-2">Edit Akun Penghuni</p>
       </button>
+      <button
+        onClick={() => navigate("/")}
+        className="absolute right-4 top-[650px] w-[150px] h-[130px] rounded-[8px] flex flex-col p-4 gap-y-2 bg-white border border-gray-200 box-border"
+      >
+        <div className="flex items-center">
+          <img src={TOA} alt="TOA" className="w-6 h-6 mr-2" />
+          <p className="font-extrabold">Log Out</p>
+        </div>
+        <p className="text-start mt-2">Keluar dari halaman</p>
+      </button>
     </div>
   );
 };

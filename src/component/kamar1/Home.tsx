@@ -129,10 +129,7 @@ const Home1 = () => {
         {renderContent()}
       </div>
 
-      {/* Area Konten Dinamis */}
-      <div className="w-full mt-6 p-4  rounded-lg max-w-2xl min-h-[300px]">
-        {renderContent()}
-      </div>
+      
     </div>
   );
 };

@@ -90,17 +90,23 @@ const LoginScreen = ({
 
       if (response.ok) {
         const data = await response.json();
-        console.log("response", response);
         console.log("Navigating to:", `/home${data.roomId}`); // Log rute yang akan digunakan
         setIsLoggedIn(true);
         setRoomId(data.roomId); // Setel roomId dari respons backend
         localStorage.setItem("roomId", data.roomId); // Simpan roomId di local storage
+
         if (data.role === "ADMIN") {
           setIsAdmin(true);
           navigate("/Beranda"); // Arahkan ke halaman admin
-        } else {
+        } else if (
+          data.role === "USER" &&
+          data.roomId &&
+          data.roomId !== "Belum memilih kamar"
+        ) {
           setIsAdmin(false);
           navigate(`/home${data.roomId}`); // Arahkan ke halaman user biasa
+        } else {
+          navigate("/Landingpage"); // Arahkan ke halaman Landingpage jika roomId tidak valid
         }
       } else {
         setError("Login gagal, periksa kembali username dan password");
