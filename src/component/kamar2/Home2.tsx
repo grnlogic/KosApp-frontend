@@ -1,9 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import InfoKamar from "./InfoKamar2"; // Konten default
 import Pembayaran from "./pembayaran2";
 import JadwalKebersihan from "./JadwalKebersihan2";
 import FAQ from "./FAQ2";
-import { Calendar, CreditCard, HelpCircle, Key } from "lucide-react";
+import {
+  Calendar,
+  CreditCard,
+  HelpCircle,
+  Key,
+  User,
+  Camera,
+} from "lucide-react";
 import backbutton from "../image/chevron-right.svg";
 import Notification from "../notification";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +19,27 @@ const Home2 = () => {
   const navigate = useNavigate();
   const [roomId, setRoomId] = useState<string | null>(null);
   const [activeContent, setActiveContent] = useState<string>("notification");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+
+  // Handle picture upload
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePicture(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Trigger file input click
+  const triggerInputClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
   useEffect(() => {
     const storedRoomId = localStorage.getItem("roomId");
@@ -46,7 +74,13 @@ const Home2 = () => {
     }
   };
 
-  const MenuButton = ({ icon, text }: { icon: React.JSX.Element; text: string }) => {
+  const MenuButton = ({
+    icon,
+    text,
+  }: {
+    icon: React.JSX.Element;
+    text: string;
+  }) => {
     return (
       <button className="flex flex-col items-center justify-center bg-[#FEBF00] border border-gray-300 rounded-lg p-4 shadow-md transition-transform hover:scale-105 hover:shadow-lg w-full max-w-[150px] h-[150px] font-bold">
         {/* Ikon dengan warna kuning dan ukuran seragam */}
@@ -64,7 +98,7 @@ const Home2 = () => {
   return (
     <div className="w-full flex flex-col items-center bg-[#FFF8E7] min-h-screen pt-16 ">
       {/* Header */}
-      <div className="w-full text-center bg-[#FEBF00] p-6 shadow-lg rounded-b-[30px]  ">
+      <div className="w-full text-center bg-[#FEBF00] p-6 shadow-lg rounded-b-[30px]">
         {/* back button to notification */}
         <button onClick={() => setActiveContent("notification")}>
           <img
@@ -74,7 +108,34 @@ const Home2 = () => {
           />
         </button>
         {/* main content header */}
-        <div className="mx-auto mt-4 w-24 h-24 bg-gray-400 rounded-full"></div>
+        <div className="relative flex flex-col items-center mb-4">
+          <div className="w-24 h-24 rounded-full overflow-hidden bg-white border-4 border-white">
+            {profilePicture ? (
+              <img
+                src={profilePicture || "/placeholder.svg"}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                <User size={40} className="text-gray-400" />
+              </div>
+            )}
+          </div>
+          <button
+            onClick={triggerInputClick}
+            className="absolute bottom-2 left-[180px] bg-white p-2 rounded-full shadow-md"
+          >
+            <Camera size={16} className="text-[#FF7A00]" />
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageUpload}
+            className="hidden"
+            accept="image/*"
+          />
+        </div>
         <h1 className="mt-4 text-white font-bold text-2xl">Selamat datang!</h1>
         <h2 className="mt-1 text-white font-bold text-base">Kamar 2</h2>
       </div>
