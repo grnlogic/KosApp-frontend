@@ -141,41 +141,42 @@ const Home2 = () => {
       </div>
 
       {/* Tombol Menu */}
-      <div className="text-center px-6 mt-6 grid grid-cols-2 gap-4 place-items-center">
-        <button
-          onClick={() => setActiveContent("infoKamar")}
-          className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-4 shadow-md w-full max-w-[150px] h-[150px] font-bold"
-        >
-          Info Kamar
-        </button>
-        <button
-          onClick={() => setActiveContent("pembayaran")}
-          className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-4 shadow-md w-full max-w-[150px] h-[150px] font-bold"
-        >
-          Pembayaran
-        </button>
-        <button
-          onClick={() => setActiveContent("jadwalKebersihan")}
-          className="bg-[#FEBF00] border border-gray-300 rounded-lg text-white p-4 shadow-md w-full max-w-[150px] h-[150px] font-bold"
-        >
-          Jadwal Kebersihan
-        </button>
-        <button
-          onClick={() => setActiveContent("faq")}
-          className="bg-[#FEBF00] border border-gray-300 rounded-lg text-white p-4 shadow-md w-full max-w-[150px] h-[150px] font-bold"
-        >
-          FAQ
-        </button>
+      <div className="text-center px-6 mt-10 max-w-4xl">
+        <div className="grid grid-cols-4 gap-6">
+          <button
+            onClick={() => setActiveContent("infoKamar")}
+            className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-6 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold"
+          >
+            Info Kamar
+          </button>
+          <button
+            onClick={() => setActiveContent("pembayaran")}
+            className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-6 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold"
+          >
+            Pembayaran
+          </button>
+          <button
+            onClick={() => setActiveContent("jadwalKebersihan")}
+            className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-6 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold"
+          >
+            Jadwal Kebersihan
+          </button>
+          <button
+            onClick={() => setActiveContent("faq")}
+            className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-6 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold"
+          >
+            FAQ
+          </button>
+        </div>
         <button
           onClick={() => setActiveContent("notification")}
-          className="bg-[#FEBF00] border border-gray-300 rounded-lg text-white p-3 shadow-md w-full col-span-2 h-[100px] font-bold"
+          className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-4 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold w-full mt-6"
         >
           Notification
         </button>
       </div>
-
       {/* Area Konten Dinamis */}
-      <div className="w-full mt-6 p-4  rounded-lg max-w-2xl min-h-[300px]">
+      <div className="w-full mt-10 p-6 bg-white rounded-lg shadow-md max-w-4xl min-h-[400px]">
         {renderContent()}
       </div>
     </div>

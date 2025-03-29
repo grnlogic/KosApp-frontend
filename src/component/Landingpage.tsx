@@ -19,6 +19,7 @@ import { owner } from "./App/Api/owner";
 import { fitur as fiturData } from "./App/Api/fitur";
 import TentangKosApp from "./TentangKosApp";
 import DetailRoom from "./DetailRoom";
+import Particles from "react-tsparticles";
 
 //card list
 const CardList = () => {
@@ -156,13 +157,27 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="relative">
+      {/* Particle Background */}
+      <Particles
+        className="absolute inset-0 z-0"
+        options={{
+          particles: {
+            number: { value: 50 },
+            size: { value: 3 },
+            move: { speed: 1 },
+            color: { value: "#FFD700" },
+            line_linked: { enable: true, color: "#FFD700" },
+          },
+        }}
+      />
+
       {/* Fixed header for auto-typing */}
-      <div className="absolute top-0 left-0 w-full text-center pt-4">
-        <h1 className="font-extrabold text-xl sm:text-2xl md:text-3xl leading-tight pb-1 text-[30px]">
+      <div className="absolute top-0 left-0 w-full text-center pt-4 px-4 sm:px-8 lg:px-16 bg-yellow-100 z-10">
+        <h1 className="font-extrabold text-xl sm:text-2xl md:text-3xl lg:text-4xl leading-tight pb-1 text-[30px] text-yellow-700">
           MIMIN KOST
         </h1>
         <h2
-          className="font-bold text-lg sm:text-xl md:text-2xl leading-tight"
+          className="font-bold text-lg sm:text-xl md:text-2xl lg:text-3xl leading-tight text-yellow-600"
           style={{ opacity: 100 }}
         >
           {displayedText}
@@ -170,140 +185,161 @@ const LandingPage: React.FC = () => {
       </div>
 
       {/* Main content */}
-      <article className="text-left pt-32 px-6 sm:px-10 md:px-20 mb-20">
-        <p className="mt-0 text-sm sm:text-base md:text-lg leading-relaxed">
-          Mudahkan Pengelolaan Kos Anda. Kos-App membantu Anda mengelola kamar,
-          memantau hunian, dan menangani pembayaran dalam satu platform.
-          Sempurna untuk pemilik dan pengelola properti kos.
-        </p>
-        <motion.button
-          onClick={() => {
-            // Navigate logic will be implemented here
-          }}
-          className="mt-4 px-4 py-3 bg-yellow-500 text-white rounded-lg max-w-xs w-full font-bold text-lg"
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          Daftar Sekarang
-        </motion.button>
-        <motion.button
-          onClick={() => setShowTentangKosApp(true)}
-          className="mt-4 px-4 py-3 border border-yellow-500 text-yellow-500 rounded-lg max-w-xs w-full font-bold text-lg hover:bg-yellow-500 hover:text-white transition duration-300"
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          Pelajari Lebih Lanjut
-        </motion.button>
-
-        <div className="bg-black flex flex-col items-center justify-center mt-10 py-20 text-white">
-          <h1 className="text-4xl font-bold">image</h1>
-        </div>
-        <motion.div
-          className="text-center"
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h1 className="font-extrabold text-xl sm:text-2xl md:text-3xl leading-tight mt-9">
-            Kamar tersedia
-          </h1>
-          <p>
-            Lihat pilihan kamar kami dan temukan yang sesuai dengan kebutuhan
-            Anda.
+      <article className="text-left pt-32 px-6 sm:px-10 md:px-20 lg:px-32 xl:px-40 mb-20 z-10 relative">
+        {/* Introduction Section */}
+        <section className="bg-yellow-50 py-10 px-6 sm:px-10 md:px-20 lg:px-32 rounded-lg shadow-md">
+          <p className="mt-0 text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed text-yellow-800">
+            Mudahkan Pengelolaan Kos Anda. Kos-App membantu Anda mengelola
+            kamar, memantau hunian, dan menangani pembayaran dalam satu
+            platform. Sempurna untuk pemilik dan pengelola properti kos.
           </p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <CardList />
-        </motion.div>
-
-        <motion.div
-          className="w-full text-center mt-9"
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h1 className="font-extrabold text-xl sm:text-2xl md:text-3xl leading-tight mb-4">
-            Lokasi Kos
-          </h1>
-          <p>Lokasi strategis dengan akses mudah ke berbagai fasilitas</p>
-        </motion.div>
-        {/* Lokasi Detail kos */}
-        <motion.div
-          className="mt-16"
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h5 className="font-extrabold text-2xl mb-1">Kos Nyaman Sejahtera</h5>
-          <div className="flex items-center gap-2">
-            <MapPinHouse size={24} />
-            <span>
-              Jl. Merdeka No. 123, Kelurahan Sukamaju, Kecamatan Setiabudi,
-              Jakarta Selatan, 12345
-            </span>
+          <div className="flex flex-col sm:flex-row gap-4 mt-6">
+            <motion.button
+              onClick={() => {
+                // Navigate logic will be implemented here
+              }}
+              className="px-4 py-3 bg-yellow-500 text-white rounded-lg font-bold text-lg lg:text-xl shadow hover:bg-yellow-600 transition duration-300"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              Daftar Sekarang
+            </motion.button>
+            <motion.button
+              onClick={() => setShowTentangKosApp(true)}
+              className="px-4 py-3 border border-yellow-500 text-yellow-500 rounded-lg font-bold text-lg lg:text-xl shadow hover:bg-yellow-500 hover:text-white transition duration-300"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
+              Pelajari Lebih Lanjut
+            </motion.button>
           </div>
-        </motion.div>
+        </section>
 
-        <motion.button
-          onClick={() => {
-            // Navigate logic will be implemented here
-          }}
-          className="mt-4 px-4 py-3 bg-black text-white rounded-lg max-w-xs w-full font-bold text-lg"
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          Lihat Lokasi
-        </motion.button>
+        {/* Image Section */}
+        <section className="bg-yellow-600 flex flex-col items-center justify-center mt-10 py-20 text-white rounded-lg shadow-md">
+          <h1 className="text-4xl lg:text-5xl font-bold">image</h1>
+        </section>
 
-        <motion.div
-          className=""
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h1 className="font-extrabold text-xl sm:text-2xl md:text-3xl leading-tight mt-9 text-center">
-            PEMILIK KOST
-          </h1>
-          <p className="text-center">
-            Kenali pemilik kos dan cara menghubunginya.
-          </p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Owner />
-        </motion.div>
+        {/* Available Rooms Section */}
+        <section className="bg-yellow-50 py-10 px-6 sm:px-10 md:px-20 lg:px-32 rounded-lg shadow-md mt-10">
+          <motion.div
+            className="text-center"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h1 className="font-extrabold text-xl sm:text-2xl md:text-3xl lg:text-4xl leading-tight text-yellow-800">
+              Kamar tersedia
+            </h1>
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-yellow-700">
+              Lihat pilihan kamar kami dan temukan yang sesuai dengan kebutuhan
+              Anda.
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <CardList />
+          </motion.div>
+        </section>
 
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h1 className="font-extrabold text-xl sm:text-2xl md:text-3xl leading-tight mt-9 text-center">
-            Fitur Kos-App
-          </h1>
-          <p className="text-center">
-            Temukan fitur-fitur canggih yang membuat Kos-App menjadi solusi
-            sempurna untuk manajemen kos.
-          </p>
-        </motion.div>
+        {/* Location Section */}
+        <section className="bg-yellow-100 py-10 px-6 sm:px-10 md:px-20 lg:px-32 rounded-lg shadow-md mt-10">
+          <motion.div
+            className="w-full text-center"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h1 className="font-extrabold text-xl sm:text-2xl md:text-3xl lg:text-4xl leading-tight mb-4 text-yellow-800">
+              Lokasi Kos
+            </h1>
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-yellow-700">
+              Lokasi strategis dengan akses mudah ke berbagai fasilitas
+            </p>
+          </motion.div>
+          <motion.div
+            className="mt-16"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h5 className="font-extrabold text-2xl lg:text-3xl mb-1 text-yellow-800">
+              Kos Nyaman Sejahtera
+            </h5>
+            <div className="flex items-center gap-2 text-yellow-700">
+              <MapPinHouse size={24} />
+              <span className="text-sm sm:text-base md:text-lg lg:text-xl">
+                Jl. Merdeka No. 123, Kelurahan Sukamaju, Kecamatan Setiabudi,
+                Jakarta Selatan, 12345
+              </span>
+            </div>
+          </motion.div>
+          <motion.button
+            onClick={() => {
+              // Navigate logic will be implemented here
+            }}
+            className="mt-4 px-4 py-3 bg-yellow-500 text-white rounded-lg font-bold text-lg lg:text-xl shadow hover:bg-yellow-600 transition duration-300"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            Lihat Lokasi
+          </motion.button>
+        </section>
 
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Fitur />
-        </motion.div>
+        {/* Owner Section */}
+        <section className="bg-yellow-50 py-10 px-6 sm:px-10 md:px-20 lg:px-32 rounded-lg shadow-md mt-10">
+          <motion.div
+            className=""
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h1 className="font-extrabold text-xl sm:text-2xl md:text-3xl lg:text-4xl leading-tight text-center text-yellow-800">
+              PEMILIK KOST
+            </h1>
+            <p className="text-center text-sm sm:text-base md:text-lg lg:text-xl text-yellow-700">
+              Kenali pemilik kos dan cara menghubunginya.
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Owner />
+          </motion.div>
+        </section>
+
+        {/* Features Section */}
+        <section className="bg-yellow-100 py-10 px-6 sm:px-10 md:px-20 lg:px-32 rounded-lg shadow-md mt-10">
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h1 className="font-extrabold text-xl sm:text-2xl md:text-3xl lg:text-4xl leading-tight text-center text-yellow-800">
+              Fitur Kos-App
+            </h1>
+            <p className="text-center text-sm sm:text-base md:text-lg lg:text-xl text-yellow-700">
+              Temukan fitur-fitur canggih yang membuat Kos-App menjadi solusi
+              sempurna untuk manajemen kos.
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Fitur />
+          </motion.div>
+        </section>
+
         {showTentangKosApp && (
           <TentangKosApp onClose={() => setShowTentangKosApp(false)} />
         )}

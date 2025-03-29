@@ -102,20 +102,20 @@ const Home1 = () => {
   };
 
   return (
-    <div className="w-full flex flex-col items-center bg-[#FFF8E7] min-h-screen pt-16 ">
+    <div className="w-full flex flex-col items-center bg-[#FFF8E7] min-h-screen pt-16">
       {/* Header */}
-      <div className="w-full text-center bg-[#FEBF00] p-6 shadow-lg rounded-b-[30px]  ">
+      <div className="w-full text-center bg-[#FEBF00] p-6 shadow-lg rounded-b-[30px] relative">
         {/* back button to notification */}
         <button onClick={() => setActiveContent("notification")}>
           <img
             src={backbutton}
             alt="notification"
-            className="w-8 h-8 absolute left-[35px]"
+            className="w-8 h-8 absolute left-8 top-8"
           />
         </button>
         {/* main content header */}
-        <div className="relative flex flex-col items-center mb-4">
-          <div className="w-24 h-24 rounded-full overflow-hidden bg-white border-4 border-white">
+        <div className="relative flex flex-col items-center">
+          <div className="w-28 h-28 rounded-full overflow-hidden bg-white border-4 border-white shadow-md">
             {profilePicture ? (
               <img
                 src={profilePicture || "/placeholder.svg"}
@@ -128,10 +128,9 @@ const Home1 = () => {
               </div>
             )}
           </div>
-          {/* Move Camera Icon Closer */}
           <button
             onClick={triggerInputClick}
-            className="absolute bottom-2 left-[180px] bg-white p-2 rounded-full shadow-md"
+            className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md transform translate-x-4 translate-y-4"
           >
             <Camera size={16} className="text-[#FF7A00]" />
           </button>
@@ -143,46 +142,47 @@ const Home1 = () => {
             accept="image/*"
           />
         </div>
-        <h1 className="mt-4 text-white font-bold text-2xl">Selamat datang!</h1>
-        <h2 className="mt-1 text-white font-bold text-base">Kamar 1</h2>
+        <h1 className="mt-4 text-white font-bold text-3xl">Selamat datang!</h1>
+        <h2 className="mt-1 text-white font-bold text-lg">Kamar 1</h2>
       </div>
 
       {/* Tombol Menu */}
-      <div className="text-center px-6 mt-6 grid grid-cols-2 gap-4 place-items-center">
-        <button
-          onClick={() => setActiveContent("infoKamar")}
-          className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-4 shadow-md w-full max-w-[150px] h-[150px] font-bold"
-        >
-          Info Kamar
-        </button>
-        <button
-          onClick={() => setActiveContent("pembayaran")}
-          className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-4 shadow-md w-full max-w-[150px] h-[150px] font-bold"
-        >
-          Pembayaran
-        </button>
-        <button
-          onClick={() => setActiveContent("jadwalKebersihan")}
-          className="bg-[#FEBF00] border border-gray-300 rounded-lg text-white p-4 shadow-md w-full max-w-[150px] h-[150px] font-bold"
-        >
-          Jadwal Kebersihan
-        </button>
-        <button
-          onClick={() => setActiveContent("faq")}
-          className="bg-[#FEBF00] border border-gray-300 rounded-lg text-white p-4 shadow-md w-full max-w-[150px] h-[150px] font-bold"
-        >
-          FAQ
-        </button>
+      <div className="text-center px-6 mt-10 max-w-4xl">
+        <div className="grid grid-cols-4 gap-6">
+          <button
+            onClick={() => setActiveContent("infoKamar")}
+            className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-6 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold"
+          >
+            Info Kamar
+          </button>
+          <button
+            onClick={() => setActiveContent("pembayaran")}
+            className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-6 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold"
+          >
+            Pembayaran
+          </button>
+          <button
+            onClick={() => setActiveContent("jadwalKebersihan")}
+            className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-6 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold"
+          >
+            Jadwal Kebersihan
+          </button>
+          <button
+            onClick={() => setActiveContent("faq")}
+            className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-6 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold"
+          >
+            FAQ
+          </button>
+        </div>
         <button
           onClick={() => setActiveContent("notification")}
-          className="bg-[#FEBF00] border border-gray-300 rounded-lg text-white p-3 shadow-md w-full col-span-2 h-[100px] font-bold"
+          className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-4 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold w-full mt-6"
         >
           Notification
         </button>
       </div>
-
       {/* Area Konten Dinamis */}
-      <div className="w-full mt-6 p-4  rounded-lg max-w-2xl min-h-[300px]">
+      <div className="w-full mt-10 p-6 bg-white rounded-lg shadow-md max-w-4xl min-h-[400px]">
         {renderContent()}
       </div>
     </div>
