@@ -17,7 +17,7 @@ const EditPeraturan: React.FC = () => {
 
   // Fetch rules from backend
   useEffect(() => {
-    fetch("http://localhost:8080/api/peraturan")
+    fetch("https://manage-kost-production.up.railway.app/api/peraturan")
       .then((res) => res.json())
       .then((data) =>
         setRules(
@@ -52,8 +52,8 @@ const EditPeraturan: React.FC = () => {
     const method = mode === "edit" ? "PUT" : "POST";
     const url =
       mode === "edit"
-        ? `http://localhost:8080/api/peraturan/${selectedRule?.id}`
-        : "http://localhost:8080/api/peraturan";
+        ? `https://manage-kost-production.up.railway.app/api/peraturan/${selectedRule?.id}`
+        : "https://manage-kost-production.up.railway.app/api/peraturan";
 
     fetch(url, {
       method,
@@ -68,7 +68,9 @@ const EditPeraturan: React.FC = () => {
     })
       .then(() => {
         // Refresh rules after saving
-        return fetch("http://localhost:8080/api/peraturan")
+        return fetch(
+          "https://manage-kost-production.up.railway.app/api/peraturan"
+        )
           .then((res) => res.json())
           .then((data) =>
             setRules(
@@ -108,12 +110,17 @@ const EditPeraturan: React.FC = () => {
         cancelButtonText: "Batal",
       }).then((result) => {
         if (result.isConfirmed) {
-          fetch(`http://localhost:8080/api/peraturan/${selectedRule.id}`, {
-            method: "DELETE",
-          })
+          fetch(
+            `https://manage-kost-production.up.railway.app/api/peraturan/${selectedRule.id}`,
+            {
+              method: "DELETE",
+            }
+          )
             .then(() => {
               // Refresh rules after deletion
-              return fetch("http://localhost:8080/api/peraturan")
+              return fetch(
+                "https://manage-kost-production.up.railway.app/api/peraturan"
+              )
                 .then((res) => res.json())
                 .then((data) =>
                   setRules(

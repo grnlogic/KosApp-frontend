@@ -41,7 +41,7 @@ const CardList = () => {
   useEffect(() => {
     // Fetch room data from the backend
     axios
-      .get("http://localhost:8080/api/kamar")
+      .get("https://manage-kost-production.up.railway.app/api/kamar")
       .then((response) =>
         setCards(
           response.data.map((item: Card) => ({

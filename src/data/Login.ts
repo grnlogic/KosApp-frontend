@@ -2,7 +2,9 @@ import Cookies from "js-cookie"; // Import js-cookie
 
 export const Login = async (username: string, password: string) => {
   try {
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8080";
+    const apiUrl =
+      import.meta.env.VITE_API_URL ||
+      "https://manage-kost-production.up.railway.app";
 
     const response = await fetch(`${apiUrl}/api/auth/login`, {
       method: "POST",

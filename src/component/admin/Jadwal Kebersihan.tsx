@@ -202,7 +202,7 @@ const JadwalKebersihan: React.FC = () => {
         id: savedKebersihan.id,
         room: savedKebersihan.roomNumber,
         areas: areas,
-        notes: savedKebersihan.notes,
+        notes: savedKebersihan.notes || "",
       });
 
       // Refresh the list

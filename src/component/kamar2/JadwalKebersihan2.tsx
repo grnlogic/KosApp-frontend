@@ -197,3 +197,6 @@ const JadwalKebersihan = () => {
 };
 
 export default JadwalKebersihan;
+
+// Note: Make sure to also update the kebersihanService.ts file to use
+// https://manage-kost-production.up.railway.app instead of localhost:8080

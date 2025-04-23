@@ -14,6 +14,10 @@ import {
   getReadableTime,
 } from "../../services/kebersihanService";
 
+// Note: This component uses kebersihanService.ts which may also need to be updated
+// to use the production URL: https://manage-kost-production.up.railway.app
+// instead of any localhost URLs.
+
 const JadwalKebersihan = () => {
   const [visibleDays, setVisibleDays] = useState<{ [key: string]: boolean }>(
     {}

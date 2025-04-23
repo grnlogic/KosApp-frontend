@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import Swal from "sweetalert2";
 
-axios.defaults.baseURL = "http://localhost:8080"; // Backend base URL
+axios.defaults.baseURL = "https://manage-kost-production.up.railway.app"; // Updated backend base URL
 
 type Room = {
   id: number;

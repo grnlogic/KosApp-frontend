@@ -12,7 +12,9 @@ const EditPengumuman: React.FC = () => {
   useEffect(() => {
     const fetchPengumuman = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/pengumuman/1`); // Replace `1` with dynamic ID
+        const response = await fetch(
+          `https://manage-kost-production.up.railway.app/api/pengumuman/1`
+        ); // Replace `1` with dynamic ID
         const data = await response.json();
         setTitle(data.judul);
         setContent(data.isi);
@@ -31,8 +33,8 @@ const EditPengumuman: React.FC = () => {
     try {
       const method = pengumumanId ? "PUT" : "POST";
       const url = pengumumanId
-        ? `http://localhost:8080/api/pengumuman/${pengumumanId}`
-        : `http://localhost:8080/api/pengumuman`;
+        ? `https://manage-kost-production.up.railway.app/api/pengumuman/${pengumumanId}`
+        : `https://manage-kost-production.up.railway.app/api/pengumuman`;
 
       const response = await fetch(url, {
         method: method,

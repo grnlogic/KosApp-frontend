@@ -23,7 +23,7 @@ export default function FAQPage() {
 
   useEffect(() => {
     setIsLoading(true);
-    fetch("http://localhost:8080/api/faqs")
+    fetch("https://manage-kost-production.up.railway.app/api/faqs")
       .then((response) => response.json())
       .then((data) => {
         setFaqs(data);

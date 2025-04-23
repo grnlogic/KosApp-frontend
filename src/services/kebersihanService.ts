@@ -1,7 +1,7 @@
 import axios from "axios";
 import WaktuPelaksanaan from "../model/WaktuPelaksanaan";
 
-const API_URL = "http://localhost:8080/api/kebersihan";
+const API_URL = "https://manage-kost-production.up.railway.app/api/kebersihan";
 
 // Configure Axios with defaults
 const api = axios.create({
@@ -38,7 +38,7 @@ export interface Kebersihan {
   areaTerrace: boolean;
   areaGarden: boolean;
   executionTime: WaktuPelaksanaan; // Using the enum type
-  notes: string;
+  notes?: string;
   createdAt?: string;
   updatedAt?: string;
 }

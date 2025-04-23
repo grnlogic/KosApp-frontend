@@ -25,7 +25,7 @@ interface ErrorResponse {
 }
 
 // URL API dasar
-const API_URL = "http://localhost:8080/api/auth";
+const API_URL = "https://manage-kost-production.up.railway.app/api/auth";
 
 export default function EditAkunPenghuni() {
   const [users, setUsers] = useState<User[]>([]);

@@ -13,7 +13,9 @@ const Announcement = () => {
   useEffect(() => {
     const fetchAnnouncement = async () => {
       try {
-        const response = await fetch("http://localhost:8080/api/pengumuman/1"); // Replace `1` with dynamic ID if needed
+        const response = await fetch(
+          "https://manage-kost-production.up.railway.app/api/pengumuman/1"
+        ); // Replace `1` with dynamic ID if needed
         const data = await response.json();
         setAnnouncement({
           id: data.id, // Gunakan ID dari API
@@ -102,7 +104,9 @@ const Rules = () => {
     const fetchPeraturan = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch("http://localhost:8080/api/peraturan");
+        const response = await fetch(
+          "https://manage-kost-production.up.railway.app/api/peraturan"
+        );
 
         if (!response.ok) {
           throw new Error("Failed to fetch peraturan data");

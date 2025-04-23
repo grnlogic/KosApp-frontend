@@ -22,7 +22,7 @@ const InfoKamar = ({ roomId = 1 }: { roomId?: number }) => {
       try {
         setLoading(true);
         const response = await fetch(
-          `http://localhost:8080/api/kamar/${roomId}`
+          `https://manage-kost-production.up.railway.app/api/kamar/${roomId}`
         );
 
         if (!response.ok) {
