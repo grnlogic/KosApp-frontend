@@ -1,11 +1,5 @@
-import {
-  FaArrowLeft,
-  FaPlus,
-  FaEdit,
-  FaTrash,
-  FaTimes,
-  FaKey,
-} from "react-icons/fa";
+import { FaArrowLeft, FaPlus, FaTrash, FaTimes, FaKey } from "react-icons/fa";
+import { Pencil } from "lucide-react";
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import axios, { AxiosError } from "axios";
@@ -382,7 +376,7 @@ export default function EditAkunPenghuni() {
                 {/* Password and role intentionally not displayed */}
               </div>
               <div className="flex gap-3 text-xl text-gray-600">
-                <FaEdit
+                <Pencil
                   className="cursor-pointer"
                   onClick={() => handleEditClick(user)}
                 />
