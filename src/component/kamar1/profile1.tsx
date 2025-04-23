@@ -130,21 +130,27 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col min-h-screen bg-[#FFF8E7]">
       {/* Header */}
-      <header className="bg-[#FF7A00] p-4 flex justify-between items-center">
+      <header className="bg-[#FF7A00] p-4 flex justify-between items-center shadow-md">
         <h1 className="text-white text-xl font-bold">MiminKost</h1>
         <div className="flex gap-4">
-          <Home className="text-white" size={24} />
-          <User className="text-white" size={24} />
-          <LogOut className="text-white" size={24} />
+          <button className="text-white hover:bg-[#FF8F1F] p-2 rounded-full transition-all duration-200">
+            <Home size={24} />
+          </button>
+          <button className="text-white hover:bg-[#FF8F1F] p-2 rounded-full transition-all duration-200">
+            <User size={24} />
+          </button>
+          <button className="text-white hover:bg-[#FF8F1F] p-2 rounded-full transition-all duration-200">
+            <LogOut size={24} />
+          </button>
         </div>
       </header>
 
       {/* Profile Header */}
-      <div className="bg-[#FFCC00] m-4 p-6 rounded-xl shadow-md relative">
+      <div className="bg-gradient-to-r from-[#FFCC00] to-[#FF9500] m-4 p-6 rounded-2xl shadow-lg relative">
         <div className="flex flex-col items-center">
           {/* Profile Picture */}
           <div className="relative mb-4">
-            <div className="w-24 h-24 rounded-full overflow-hidden bg-white border-4 border-white">
+            <div className="w-28 h-28 rounded-full overflow-hidden bg-white border-4 border-white shadow-md">
               {profilePicture ? (
                 <img
                   src={profilePicture || "/placeholder.svg"}
@@ -159,7 +165,7 @@ export default function ProfilePage() {
             </div>
             <button
               onClick={triggerInputClick}
-              className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md"
+              className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md hover:bg-gray-100 transition-all duration-200 transform hover:scale-105"
             >
               <Camera size={16} className="text-[#FF7A00]" />
             </button>
@@ -180,30 +186,38 @@ export default function ProfilePage() {
                   type="text"
                   value={tempName}
                   onChange={(e) => setTempName(e.target.value)}
-                  className="bg-white rounded-md px-2 py-1 text-gray-800 text-center"
+                  className="bg-white rounded-md px-3 py-2 text-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-[#FF7A00]"
                 />
-                <button onClick={saveName} className="text-white">
-                  <Save size={16} />
+                <button
+                  onClick={saveName}
+                  className="text-white hover:bg-white/20 p-1 rounded-full transition-all"
+                >
+                  <Save size={18} />
                 </button>
-                <button onClick={cancelName} className="text-white">
-                  <X size={16} />
+                <button
+                  onClick={cancelName}
+                  className="text-white hover:bg-white/20 p-1 rounded-full transition-all"
+                >
+                  <X size={18} />
                 </button>
               </div>
             ) : (
               <>
-                <h2 className="text-white text-xl font-bold">{profile.name}</h2>
+                <h2 className="text-white text-2xl font-bold">
+                  {profile.name}
+                </h2>
                 <button
                   onClick={() => setEditProfile(true)}
-                  className="text-white"
+                  className="text-white hover:bg-white/20 p-1 rounded-full transition-all"
                 >
-                  <Edit size={16} />
+                  <Edit size={18} />
                 </button>
               </>
             )}
           </div>
 
           {/* Room Number */}
-          <p className="text-white">{profile.room}</p>
+          <p className="text-white text-lg">{profile.room}</p>
         </div>
       </div>
 

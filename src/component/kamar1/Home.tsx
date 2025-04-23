@@ -10,9 +10,10 @@ import {
   HelpCircle,
   Key,
   User,
+  Bell,
 } from "lucide-react";
 import backbutton from "../image/chevron-right.svg";
-import Notification from "../notification";
+import Notification from "../PeraturanKost";
 import { useNavigate } from "react-router-dom";
 
 const Home1 = () => {
@@ -51,7 +52,7 @@ const Home1 = () => {
     } else {
       setRoomId(storedRoomId);
 
-      // ✅ Redirect user ke halaman kamar yang sesuai
+      // Redirect user ke halaman kamar yang sesuai
       if (storedRoomId !== "1" && storedRoomId !== "Belum memilih kamar") {
         navigate(`/Home${storedRoomId}`); // Misal user di Home1 tapi roomId = 2, redirect ke Home2
       }
@@ -83,39 +84,46 @@ const Home1 = () => {
   const MenuButton = ({
     icon,
     text,
+    isActive,
+    onClick,
   }: {
     icon: React.JSX.Element;
     text: string;
+    isActive: boolean;
+    onClick: () => void;
   }) => {
     return (
-      <button className="flex flex-col items-center justify-center bg-[#FEBF00] border border-gray-300 rounded-lg p-4 shadow-md transition-transform hover:scale-105 hover:shadow-lg w-full max-w-[150px] h-[150px] font-bold">
-        {/* Ikon dengan warna kuning dan ukuran seragam */}
-        <div className="text-[#FEBF00] w-8 h-8 flex items-center justify-center">
+      <button
+        onClick={onClick}
+        className={`flex flex-col items-center justify-center ${
+          isActive
+            ? "bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white"
+            : "bg-gradient-to-r from-[#FFCC00] to-[#FEBF00] text-gray-800"
+        } rounded-xl p-4 shadow-md transition-all duration-300 hover:shadow-lg transform hover:scale-105 hover:translate-y-[-2px] w-full max-w-[150px] h-[150px] font-bold`}
+      >
+        <div className={`w-10 h-10 flex items-center justify-center mb-2`}>
           {icon}
         </div>
-        {/* Teks dengan font bold dan warna putih */}
-        <span className="mt-2 text-white font-bold text-sm text-center">
-          {text}
-        </span>
+        <span className="text-sm text-center">{text}</span>
       </button>
     );
   };
 
   return (
-    <div className="w-full flex flex-col items-center bg-[#FFF8E7] min-h-screen pt-16">
+    <div className="w-full flex flex-col items-center bg-[#FFF8E7] min-h-screen pt-16 animate-fadeIn">
       {/* Header */}
-      <div className="w-full text-center bg-[#FEBF00] p-6 shadow-lg rounded-b-[30px] relative">
+      <div className="w-full text-center bg-gradient-to-r from-[#FFCC00] to-[#FF9500] p-8 shadow-lg rounded-b-[30px] relative">
         {/* back button to notification */}
-        <button onClick={() => setActiveContent("notification")}>
-          <img
-            src={backbutton}
-            alt="notification"
-            className="w-8 h-8 absolute left-8 top-8"
-          />
+        <button
+          onClick={() => setActiveContent("notification")}
+          className="absolute left-6 top-6 bg-white/20 p-2 rounded-full transition-all duration-200 hover:bg-white/30"
+        >
+          <img src={backbutton} alt="notification" className="w-6 h-6" />
         </button>
+
         {/* main content header */}
-        <div className="relative flex flex-col items-center">
-          <div className="w-28 h-28 rounded-full overflow-hidden bg-white border-4 border-white shadow-md">
+        <div className="relative flex flex-col items-center mt-2">
+          <div className="w-32 h-32 rounded-full overflow-hidden bg-white border-4 border-white shadow-lg">
             {profilePicture ? (
               <img
                 src={profilePicture || "/placeholder.svg"}
@@ -124,15 +132,15 @@ const Home1 = () => {
               />
             ) : (
               <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                <User size={40} className="text-gray-400" />
+                <User size={48} className="text-gray-400" />
               </div>
             )}
           </div>
           <button
             onClick={triggerInputClick}
-            className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md transform translate-x-4 translate-y-4"
+            className="absolute bottom-0 right-0 bg-white p-3 rounded-full shadow-md transform translate-x-4 translate-y-4 hover:bg-gray-100 transition-all duration-200"
           >
-            <Camera size={16} className="text-[#FF7A00]" />
+            <Camera size={18} className="text-[#FF7A00]" />
           </button>
           <input
             type="file"
@@ -142,47 +150,49 @@ const Home1 = () => {
             accept="image/*"
           />
         </div>
-        <h1 className="mt-4 text-white font-bold text-3xl">Selamat datang!</h1>
-        <h2 className="mt-1 text-white font-bold text-lg">Kamar 1</h2>
+        <h1 className="mt-6 text-white font-bold text-3xl">Selamat datang!</h1>
+        <h2 className="mt-2 text-white font-bold text-xl">Kamar 1</h2>
       </div>
 
       {/* Tombol Menu */}
-      <div className="text-center px-6 mt-10 max-w-4xl">
-        <div className="grid grid-cols-4 gap-6">
-          <button
+      <div className="text-center px-6 mt-10 max-w-4xl w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+          <MenuButton
+            icon={<Key size={28} />}
+            text="Info Kamar"
+            isActive={activeContent === "infoKamar"}
             onClick={() => setActiveContent("infoKamar")}
-            className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-6 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold"
-          >
-            Info Kamar
-          </button>
-          <button
+          />
+          <MenuButton
+            icon={<CreditCard size={28} />}
+            text="Pembayaran"
+            isActive={activeContent === "pembayaran"}
             onClick={() => setActiveContent("pembayaran")}
-            className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-6 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold"
-          >
-            Pembayaran
-          </button>
-          <button
+          />
+          <MenuButton
+            icon={<Calendar size={28} />}
+            text="Jadwal Kebersihan"
+            isActive={activeContent === "jadwalKebersihan"}
             onClick={() => setActiveContent("jadwalKebersihan")}
-            className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-6 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold"
-          >
-            Jadwal Kebersihan
-          </button>
-          <button
+          />
+          <MenuButton
+            icon={<HelpCircle size={28} />}
+            text="FAQ"
+            isActive={activeContent === "faq"}
             onClick={() => setActiveContent("faq")}
-            className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-6 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold"
-          >
-            FAQ
-          </button>
+          />
         </div>
         <button
           onClick={() => setActiveContent("notification")}
-          className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-4 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold w-full mt-6"
+          className="bg-gradient-to-r from-[#FFCC00] to-[#FF9500] text-white rounded-xl p-4 shadow-md hover:shadow-lg transition-all duration-300 transform hover:translate-y-[-2px] font-bold w-full mt-8 flex items-center justify-center"
         >
+          <Bell className="mr-2" size={20} />
           Notification
         </button>
       </div>
+
       {/* Area Konten Dinamis */}
-      <div className="w-full mt-10 p-6 bg-white rounded-lg shadow-md max-w-4xl min-h-[400px]">
+      <div className="w-full mt-10 p-6 bg-white rounded-xl shadow-md max-w-4xl min-h-[400px] mb-12">
         {renderContent()}
       </div>
     </div>

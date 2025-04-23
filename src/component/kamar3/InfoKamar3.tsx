@@ -1,6 +1,58 @@
 import { CheckCircleIcon } from "@heroicons/react/24/solid";
+import { useState, useEffect } from "react";
 
-const infoKamar = () => {
+interface KamarData {
+  id: number;
+  nomorKamar: string;
+  status: string;
+  hargaBulanan: number;
+  fasilitas: string;
+  title: string;
+  description: string;
+  price: number;
+}
+
+const InfoKamar3 = ({ roomId = 3 }: { roomId?: number }) => {
+  const [kamar, setKamar] = useState<KamarData | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchKamarData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(
+          `http://localhost:8080/api/kamar/${roomId}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch room data");
+        }
+
+        const data = await response.json();
+        setKamar(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred");
+        console.error("Error fetching room data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchKamarData();
+  }, [roomId]);
+
+  const facilitiesList = kamar?.fasilitas
+    ? kamar.fasilitas.split(",").map((item) => item.trim())
+    : [];
+
+  if (loading)
+    return <div className="text-center py-4">Loading room details...</div>;
+  if (error)
+    return <div className="text-center py-4 text-red-500">Error: {error}</div>;
+  if (!kamar)
+    return <div className="text-center py-4">No room data available</div>;
+
   return (
     <div>
       <div className="bg-[#FEBF00] rounded shadow-custom">
@@ -9,7 +61,7 @@ const infoKamar = () => {
         </div>
         <div className="flex justify-between pl-8 pt-3 pr-8">
           <p className="text-1xl text-white font-medium">Nomor Kamar</p>
-          <p className="text-1xl text-white font-medium ">1</p>
+          <p className="text-1xl text-white font-medium ">{kamar.nomorKamar}</p>
         </div>
         <div className="flex justify-between pl-8 pt-3 pr-8">
           <p className="text-1xl text-white font-medium">Status Pembayaran</p>
@@ -17,7 +69,9 @@ const infoKamar = () => {
         </div>
         <div className="flex justify-between pl-8 pt-3 pr-8 pb-3">
           <p className="text-1xl text-white font-medium">Harga Sewa</p>
-          <p className="text-1xl text-white font-bold">Rp 500.000/Bulan</p>
+          <p className="text-1xl text-white font-bold">
+            Rp {kamar.hargaBulanan.toLocaleString()}/Bulan
+          </p>
         </div>
       </div>
 
@@ -25,21 +79,21 @@ const infoKamar = () => {
         <div className="flex justify-start pl-4 pt-4">
           <h1 className="text-2xl text-white font-bold">Fasilitas</h1>
         </div>
-        <div className="flex justify-between pl-8 pt-3 pr-8">
-          <p className="text-1xl text-white font-medium">AC</p>
-          <CheckCircleIcon className="w-6 h-6 text-blue-500" />
-        </div>
-        <div className="flex justify-between pl-8 pt-3 pr-8">
-          <p className="text-1xl text-white font-medium">Kamar Mandi Dalam</p>
-          <CheckCircleIcon className="w-6 h-6 text-blue-500" />
-        </div>
-        <div className="flex justify-between pl-8 pt-3 pr-8 pb-3">
-          <p className="text-1xl text-white font-medium">Wifi</p>
-          <CheckCircleIcon className="w-6 h-6 text-blue-500" />
-        </div>
+        {facilitiesList.length > 0 ? (
+          facilitiesList.map((facility, index) => (
+            <div key={index} className="flex justify-between pl-8 pt-3 pr-8">
+              <p className="text-1xl text-white font-medium">{facility}</p>
+              <CheckCircleIcon className="w-6 h-6 text-blue-500" />
+            </div>
+          ))
+        ) : (
+          <div className="pl-8 pt-3 pr-8 pb-3 text-white">
+            No facilities listed
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default infoKamar;
+export default InfoKamar3;

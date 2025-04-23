@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import NavItem from "./NavItem";
 import { LogOut, User } from "lucide-react";
@@ -25,38 +25,150 @@ const Navbar = ({
   roomId,
 }: {
   setIsLoggedIn: (value: boolean) => void;
-  roomId: string; // Tambahkan prop roomId
+  roomId: string;
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    // if (!window.googleTranslateElementInit) {
+    //   window.googleTranslateElementInit = () => {
+    //     if (window.google && window.google.translate) {
+    //       try {
+    //         new window.google.translate.TranslateElement(
+    //           {
+    //             pageLanguage: "id",
+    //             includedLanguages: "en,id,ja,fr,de,es", // Add more languages as needed
+    //             layout:
+    //               window.google.translate.TranslateElement.InlineLayout.SIMPLE,
+    //             autoDisplay: false,
+    //           },
+    //           "google_translate_element"
+    //         );
+    //       } catch (error) {
+    //         console.error("Error initializing Google Translate:", error);
+    //       }
+    //     } else {
+    //       console.error("Google Translate API is not available.");
+    //     }
+    //   };
+    //   const script = document.createElement("script");
+    //   script.src =
+    //     "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+    //   script.async = true;
+    //   script.onerror = () => {
+    //     console.error("Failed to load Google Translate script.");
+    //   };
+    //   document.body.appendChild(script);
+    //   return () => {
+    //     document.body.removeChild(script);
+    //     delete window.googleTranslateElementInit;
+    //   };
+    // }
+  }, []);
+
+  const toggleDropdown = () => {
+    setDropdownOpen(!dropdownOpen);
+  };
+
+  const toggleLanguageDropdown = () => {
+    setLanguageDropdownOpen(!languageDropdownOpen);
+  };
+
+  const handleLanguageChange = (languageCode: string) => {
+    // const iframe = document.querySelector(
+    //   "iframe.goog-te-menu-frame"
+    // ) as HTMLIFrameElement;
+    // if (iframe) {
+    //   const iframeDocument =
+    //     iframe.contentDocument || iframe.contentWindow?.document;
+    //   if (iframeDocument) {
+    //     const languageLink = iframeDocument.querySelector(
+    //       `a[lang="${languageCode}"]`
+    //     ) as HTMLAnchorElement;
+    //     if (languageLink) {
+    //       languageLink.click();
+    //     }
+    //   }
+    // }
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 bg-orange-500 text-white shadow-md px-4 py-3 z-50">
       <div className="flex justify-between items-center">
-        {/* Logo */}
         <div className="flex items-center space-x-4">
           <span className="font-bold text-xl">MiminKost</span>
         </div>
 
-        {/* Navigation Items */}
         <div className="flex items-center space-x-4">
           <NavItem
-            icon={HomeIcon} // icon home
+            icon={HomeIcon}
             isActive={location.pathname === `/Home${roomId}`}
-            onClick={() => navigate(`/Home${roomId}`)} // Navigasi ke notification sesuai roomId
+            onClick={() => navigate(`/Home${roomId}`)}
           />
-
           <NavItem
-            icon={<User size={24} />} // icon user
+            icon={<User size={24} />}
             isActive={location.pathname === `/Profile${roomId}`}
-            onClick={() => navigate(`/Profile${roomId}`)} // Navigasi ke profile sesuai roomId
+            onClick={() => navigate(`/Profile${roomId}`)}
           />
           <NavItem
-            icon={<LogOut size={24} />} // icon logout
+            icon={<LogOut size={24} />}
             onClick={() => {
               setIsLoggedIn(false);
               navigate("/");
             }}
           />
+
+          <div className="relative">
+            <button
+              onClick={toggleLanguageDropdown}
+              className="bg-gray-700 px-4 py-2 rounded-md hover:bg-gray-600"
+            >
+              Translate
+            </button>
+            {languageDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white text-black rounded-md shadow-lg">
+                <button
+                  onClick={() => handleLanguageChange("en")}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-200"
+                >
+                  English
+                </button>
+                <button
+                  onClick={() => handleLanguageChange("id")}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-200"
+                >
+                  Indonesian
+                </button>
+                <button
+                  onClick={() => handleLanguageChange("ja")}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-200"
+                >
+                  Japanese
+                </button>
+                <button
+                  onClick={() => handleLanguageChange("fr")}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-200"
+                >
+                  French
+                </button>
+                <button
+                  onClick={() => handleLanguageChange("de")}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-200"
+                >
+                  German
+                </button>
+                <button
+                  onClick={() => handleLanguageChange("es")}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-200"
+                >
+                  Spanish
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </nav>

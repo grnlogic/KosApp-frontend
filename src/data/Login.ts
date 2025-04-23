@@ -1,3 +1,5 @@
+import Cookies from "js-cookie"; // Import js-cookie
+
 export const Login = async (username: string, password: string) => {
   try {
     const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8080";
@@ -22,6 +24,7 @@ export const Login = async (username: string, password: string) => {
       const data = JSON.parse(responseText); // Coba parsing ke JSON
       if (data.token) {
         localStorage.setItem("token", data.token);
+        Cookies.set("authToken", data.token, { expires: 7 }); // Simpan token ke cookies dengan masa berlaku 7 hari
         return true;
       } else {
         console.warn("Token tidak ditemukan dalam response:", data);

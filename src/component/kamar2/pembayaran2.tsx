@@ -32,7 +32,7 @@ const Contact = () => {
 
       <div className="bg-[#FEBF00] rounded-md p-5 mt-4">
         <div className="">
-          <h1 className="text-2xl text-white font-extrabold mb-7 mt-3">Hubungi Kami</h1>
+          <h1 className="text-2xl text-white font-extrabold mb-7 mt-3">Riwayat</h1>
         </div>
         <div className="bg-white rounded-md p-5">
           <h1 className="text-1xl text-black font-bold">januari 2025</h1>

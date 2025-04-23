@@ -1,61 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Plus, X } from "lucide-react";
-import { Link } from "react-router-dom"; // Replace Next.js Link with React Router's Link
+import { Link } from "react-router-dom";
+import axios from "axios";
+import Swal from "sweetalert2";
+
+axios.defaults.baseURL = "http://localhost:8080"; // Backend base URL
 
 type Room = {
   id: number;
-  roomNumber: string;
-  status: "Tersedia" | "Terisi" | "Maintenance";
-  price: number;
-  facilities: string[];
+  nomorKamar: string; // Matches backend field
+  status: "kosong" | "terisi" | "pending"; // Matches backend field
+  hargaBulanan: number; // Matches backend field
+  fasilitas: string[]; // Split from backend string
 };
 
 type ModalType = "edit" | "add" | "delete" | null;
 
 export default function InfoKamar() {
-  const [rooms, setRooms] = useState<Room[]>([
-    {
-      id: 1,
-      roomNumber: "A-101",
-      status: "Tersedia",
-      price: 1500000,
-      facilities: ["AC", "Kamar mandi dalam", "Wifi"],
-    },
-    {
-      id: 2,
-      roomNumber: "B-202",
-      status: "Terisi",
-      price: 1200000,
-      facilities: ["Kipas angin", "Kamar mandi dalam"],
-    },
-    {
-      id: 3,
-      roomNumber: "C-303",
-      status: "Maintenance",
-      price: 1800000,
-      facilities: ["AC", "Kamar mandi dalam", "Wifi", "TV"],
-    },
-  ]);
-
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [modalType, setModalType] = useState<ModalType>(null);
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [newRoom, setNewRoom] = useState<Partial<Room>>({
-    roomNumber: "",
-    status: "Tersedia",
-    price: 0,
-    facilities: [],
+    nomorKamar: "",
+    status: "kosong",
+    hargaBulanan: undefined,
+    fasilitas: [],
   });
   const [facilityInput, setFacilityInput] = useState("");
+  const [notification, setNotification] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        const response = await axios.get("/api/kamar");
+        const mappedRooms = response.data.map((room: any) => ({
+          ...room,
+          fasilitas: room.fasilitas ? room.fasilitas.split(",") : [],
+        }));
+        setRooms(mappedRooms);
+      } catch (error) {
+        console.error("Failed to fetch rooms:", error);
+        showNotification("Gagal terhubung ke database!");
+      }
+    };
+
+    fetchRooms();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Tersedia":
+      case "kosong":
         return "bg-green-100 text-green-800";
-      case "Terisi":
+      case "terisi":
         return "bg-red-100 text-red-800";
-      case "Maintenance":
+      case "pending":
         return "bg-yellow-100 text-yellow-800";
       default:
         return "bg-gray-100 text-gray-800";
@@ -64,12 +64,7 @@ export default function InfoKamar() {
 
   const openEditModal = (room: Room) => {
     setCurrentRoom(room);
-    setNewRoom({
-      roomNumber: room.roomNumber,
-      status: room.status,
-      price: room.price,
-      facilities: [...room.facilities],
-    });
+    setNewRoom({ ...room });
     setModalType("edit");
   };
 
@@ -80,10 +75,10 @@ export default function InfoKamar() {
 
   const openAddModal = () => {
     setNewRoom({
-      roomNumber: "",
-      status: "Tersedia",
-      price: 0,
-      facilities: [],
+      nomorKamar: "",
+      status: "kosong",
+      hargaBulanan: undefined,
+      fasilitas: [],
     });
     setModalType("add");
   };
@@ -93,38 +88,142 @@ export default function InfoKamar() {
     setCurrentRoom(null);
   };
 
-  const handleSaveEdit = () => {
-    if (!currentRoom) return;
-
-    const updatedRooms = rooms.map((room) =>
-      room.id === currentRoom.id ? { ...room, ...newRoom } : room
-    );
-
-    setRooms(updatedRooms);
-    closeModal();
+  const showNotification = (message: string) => {
+    setNotification(message);
+    setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleDelete = () => {
+  const handleSaveEdit = async () => {
     if (!currentRoom) return;
 
-    const updatedRooms = rooms.filter((room) => room.id !== currentRoom.id);
-    setRooms(updatedRooms);
-    closeModal();
+    try {
+      const roomToUpdate = {
+        ...newRoom,
+        fasilitas: newRoom.fasilitas?.join(","),
+      };
+
+      const response = await axios.put(
+        `/api/kamar/${currentRoom.id}`,
+        roomToUpdate
+      );
+
+      if (response.status === 200) {
+        const updatedRoom = {
+          ...response.data,
+          fasilitas: response.data.fasilitas
+            ? response.data.fasilitas.split(",")
+            : [],
+        };
+
+        setRooms((prevRooms) =>
+          prevRooms.map((room) =>
+            room.id === currentRoom.id ? updatedRoom : room
+          )
+        );
+        closeModal();
+        Swal.fire({
+          title: "Berhasil!",
+          text: "Kamar berhasil diperbarui!",
+          icon: "success",
+          confirmButtonText: "OK",
+        });
+      } else {
+        Swal.fire({
+          title: "Gagal!",
+          text: "Terjadi kesalahan saat memperbarui kamar.",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update room:", error);
+      Swal.fire({
+        title: "Gagal!",
+        text: "Terjadi kesalahan saat memperbarui kamar.",
+        icon: "error",
+        confirmButtonText: "OK",
+      });
+    }
   };
 
-  const handleAddRoom = () => {
-    const newId = Math.max(0, ...rooms.map((room) => room.id)) + 1;
+  const handleDelete = async () => {
+    if (!currentRoom) return;
 
-    const roomToAdd: Room = {
-      id: newId,
-      roomNumber: newRoom.roomNumber || "",
-      status: newRoom.status || "Tersedia",
-      price: newRoom.price || 0,
-      facilities: newRoom.facilities || [],
-    };
+    try {
+      const response = await axios.delete(`/api/kamar/${currentRoom.id}`);
 
-    setRooms([...rooms, roomToAdd]);
-    closeModal();
+      if (response.status === 200) {
+        setRooms((prevRooms) =>
+          prevRooms.filter((room) => room.id !== currentRoom.id)
+        );
+        closeModal();
+        Swal.fire({
+          title: "Berhasil!",
+          text: "Kamar berhasil dihapus!",
+          icon: "success",
+          confirmButtonText: "OK",
+        });
+      } else {
+        Swal.fire({
+          title: "Gagal!",
+          text: "Terjadi kesalahan saat menghapus kamar.",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to delete room:", error);
+      Swal.fire({
+        title: "Gagal!",
+        text: "Terjadi kesalahan saat menghapus kamar.",
+        icon: "error",
+        confirmButtonText: "OK",
+      });
+    }
+  };
+
+  const handleAddRoom = async () => {
+    try {
+      const roomToAdd = {
+        ...newRoom,
+        fasilitas: newRoom.fasilitas?.join(","),
+      };
+
+      const response = await axios.post("/api/kamar", roomToAdd);
+
+      if (response.status === 201) {
+        const addedRoom = {
+          ...response.data,
+          fasilitas: response.data.fasilitas
+            ? response.data.fasilitas.split(",")
+            : [],
+        };
+
+        setRooms((prevRooms) => [...prevRooms, addedRoom]);
+        closeModal();
+        Swal.fire({
+          title: "Berhasil!",
+          text: "Kamar berhasil ditambahkan!",
+          icon: "success",
+          confirmButtonText: "OK",
+        });
+      } else {
+        Swal.fire({
+          title: "Gagal!",
+          text: "Terjadi kesalahan saat menambahkan kamar.",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to add room:", error);
+      Swal.fire({
+        title: "Gagal!",
+        text: "Terjadi kesalahan saat menambahkan kamar.",
+        icon: "error",
+        confirmButtonText: "OK",
+      });
+    }
   };
 
   const addFacility = () => {
@@ -132,31 +231,30 @@ export default function InfoKamar() {
 
     setNewRoom({
       ...newRoom,
-      facilities: [...(newRoom.facilities || []), facilityInput.trim()],
+      fasilitas: [...(newRoom.fasilitas || []), facilityInput.trim()],
     });
 
     setFacilityInput("");
   };
 
   const removeFacility = (index: number) => {
-    const updatedFacilities = [...(newRoom.facilities || [])];
+    const updatedFacilities = [...(newRoom.fasilitas || [])];
     updatedFacilities.splice(index, 1);
 
     setNewRoom({
       ...newRoom,
-      facilities: updatedFacilities,
+      fasilitas: updatedFacilities,
     });
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-yellow-400 rounded-b-[40px] p-4 pb-8">
-        <Link to="/Beranda" className="flex items-center text-white">
-          <ArrowLeft className="mr-2" />
-          <h1 className="text-xl md:text-2xl font-bold">Edit Info Kamar</h1>
-        </Link>
-      </div>
+      {/* Notification Popup */}
+      {notification && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-md shadow-md z-50">
+          {notification}
+        </div>
+      )}
 
       {/* Content */}
       <div className="p-4 md:p-6">
@@ -180,7 +278,7 @@ export default function InfoKamar() {
               {/* Mobile View - Card Layout */}
               <div className="md:hidden grid grid-cols-1 gap-2">
                 <div className="flex justify-between items-center">
-                  <div className="font-medium text-lg">{room.roomNumber}</div>
+                  <div className="font-medium text-lg">{room.nomorKamar}</div>
                   <span
                     className={`px-3 py-1 rounded-full text-sm ${getStatusColor(
                       room.status
@@ -191,11 +289,11 @@ export default function InfoKamar() {
                 </div>
                 <div className="text-gray-700">
                   <span className="font-medium">Harga: </span>
-                  Rp {room.price.toLocaleString()}
+                  Rp {room.hargaBulanan.toLocaleString()}
                 </div>
                 <div className="text-gray-700">
                   <span className="font-medium">Fasilitas: </span>
-                  {room.facilities.join(", ")}
+                  {room.fasilitas.join(", ")}
                 </div>
                 <div className="flex space-x-3 mt-2">
                   <button
@@ -215,7 +313,7 @@ export default function InfoKamar() {
 
               {/* Desktop View - Table Layout */}
               <div className="hidden md:grid md:grid-cols-5 items-center">
-                <div className="font-medium">{room.roomNumber}</div>
+                <div className="font-medium">{room.nomorKamar}</div>
                 <div>
                   <span
                     className={`px-3 py-1 rounded-full text-sm ${getStatusColor(
@@ -225,8 +323,8 @@ export default function InfoKamar() {
                     {room.status}
                   </span>
                 </div>
-                <div>Rp {room.price.toLocaleString()}</div>
-                <div>{room.facilities.join(", ")}</div>
+                <div>Rp {room.hargaBulanan.toLocaleString()}</div>
+                <div>{room.fasilitas.join(", ")}</div>
                 <div className="space-y-1">
                   <button
                     className="block text-blue-500"
@@ -255,8 +353,251 @@ export default function InfoKamar() {
         </button>
       </div>
 
-      {/* Modals */}
-      {/* ...existing modal code... */}
+      {/* Add Room Modal */}
+      {modalType === "add" && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4">Tambah Kamar Baru</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Nomor Kamar
+                </label>
+                <input
+                  type="text"
+                  className="w-full border rounded-md p-2"
+                  value={newRoom.nomorKamar}
+                  onChange={(e) =>
+                    setNewRoom({ ...newRoom, nomorKamar: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <select
+                  className="w-full border rounded-md p-2"
+                  value={newRoom.status}
+                  onChange={(e) =>
+                    setNewRoom({
+                      ...newRoom,
+                      status: e.target.value as Room["status"],
+                    })
+                  }
+                >
+                  <option value="kosong">kosong</option>
+                  <option value="terisi">terisi</option>
+                  <option value="pending">pending</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Harga</label>
+                <input
+                  type="number"
+                  className="w-full border rounded-md p-2"
+                  value={
+                    newRoom.hargaBulanan !== undefined
+                      ? newRoom.hargaBulanan
+                      : ""
+                  } // Show empty if undefined
+                  onChange={(e) =>
+                    setNewRoom({
+                      ...newRoom,
+                      hargaBulanan: e.target.value
+                        ? parseInt(e.target.value)
+                        : undefined, // Allow empty value
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Fasilitas
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    className="flex-1 border rounded-md p-2"
+                    value={facilityInput}
+                    onChange={(e) => setFacilityInput(e.target.value)}
+                  />
+                  <button
+                    className="bg-blue-500 text-white px-3 py-1 rounded-md"
+                    onClick={addFacility}
+                  >
+                    Tambah
+                  </button>
+                </div>
+                <ul className="mt-2 space-y-1">
+                  {newRoom.fasilitas?.map((facility, index) => (
+                    <li
+                      key={index}
+                      className="flex justify-between items-center bg-gray-100 p-2 rounded-md"
+                    >
+                      {facility}
+                      <button
+                        className="text-red-500"
+                        onClick={() => removeFacility(index)}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                className="px-4 py-2 bg-gray-200 rounded-md"
+                onClick={closeModal}
+              >
+                Batal
+              </button>
+              <button
+                className="px-4 py-2 bg-blue-500 text-white rounded-md"
+                onClick={handleAddRoom}
+              >
+                Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Room Modal */}
+      {modalType === "edit" && currentRoom && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4">Edit Kamar</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Nomor Kamar
+                </label>
+                <input
+                  type="text"
+                  className="w-full border rounded-md p-2"
+                  value={newRoom.nomorKamar}
+                  onChange={(e) =>
+                    setNewRoom({ ...newRoom, nomorKamar: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <select
+                  className="w-full border rounded-md p-2"
+                  value={newRoom.status}
+                  onChange={(e) =>
+                    setNewRoom({
+                      ...newRoom,
+                      status: e.target.value as Room["status"],
+                    })
+                  }
+                >
+                  <option value="kosong">kosong</option>
+                  <option value="terisi">terisi</option>
+                  <option value="pending">pending</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Harga</label>
+                <input
+                  type="number"
+                  className="w-full border rounded-md p-2"
+                  value={
+                    newRoom.hargaBulanan !== undefined
+                      ? newRoom.hargaBulanan
+                      : ""
+                  }
+                  onChange={(e) =>
+                    setNewRoom({
+                      ...newRoom,
+                      hargaBulanan: e.target.value
+                        ? parseInt(e.target.value)
+                        : undefined,
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Fasilitas
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    className="flex-1 border rounded-md p-2"
+                    value={facilityInput}
+                    onChange={(e) => setFacilityInput(e.target.value)}
+                  />
+                  <button
+                    className="bg-blue-500 text-white px-3 py-1 rounded-md"
+                    onClick={addFacility}
+                  >
+                    Tambah
+                  </button>
+                </div>
+                <ul className="mt-2 space-y-1">
+                  {newRoom.fasilitas?.map((facility, index) => (
+                    <li
+                      key={index}
+                      className="flex justify-between items-center bg-gray-100 p-2 rounded-md"
+                    >
+                      {facility}
+                      <button
+                        className="text-red-500"
+                        onClick={() => removeFacility(index)}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                className="px-4 py-2 bg-gray-200 rounded-md"
+                onClick={closeModal}
+              >
+                Batal
+              </button>
+              <button
+                className="px-4 py-2 bg-blue-500 text-white rounded-md"
+                onClick={handleSaveEdit}
+              >
+                Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Room Modal */}
+      {modalType === "delete" && currentRoom && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4">Hapus Kamar</h3>
+            <p>
+              Apakah Anda yakin ingin menghapus kamar {currentRoom.nomorKamar}?
+            </p>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                className="px-4 py-2 bg-gray-200 rounded-md"
+                onClick={closeModal}
+              >
+                Batal
+              </button>
+              <button
+                className="px-4 py-2 bg-red-500 text-white rounded-md"
+                onClick={handleDelete}
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
