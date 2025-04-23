@@ -1,5 +1,4 @@
-import { FaArrowLeft, FaPlus, FaTrash, FaTimes, FaKey } from "react-icons/fa";
-import { Pencil } from "lucide-react";
+import { Pencil, Key, Trash, X, ArrowLeft, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import axios, { AxiosError } from "axios";
@@ -380,12 +379,13 @@ export default function EditAkunPenghuni() {
                   className="cursor-pointer"
                   onClick={() => handleEditClick(user)}
                 />
-                <FaKey
-                  className="cursor-pointer text-yellow-500"
-                  onClick={() => handlePasswordResetClick(user)}
-                  title="Reset Password"
-                />
-                <FaTrash
+                <span title="Reset Password">
+                  <Key
+                    className="cursor-pointer text-yellow-500"
+                    onClick={() => handlePasswordResetClick(user)}
+                  />
+                </span>
+                <Trash
                   className="cursor-pointer text-red-500"
                   onClick={() => handleDeleteClick(user)}
                 />
@@ -415,7 +415,7 @@ export default function EditAkunPenghuni() {
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">Edit Penghuni</h2>
-              <FaTimes
+              <X
                 className="text-gray-600 cursor-pointer"
                 onClick={() => {
                   Swal.fire({
@@ -532,7 +532,7 @@ export default function EditAkunPenghuni() {
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">Reset Password</h2>
-              <FaTimes
+              <X
                 className="text-gray-600 cursor-pointer"
                 onClick={() => {
                   Swal.fire({
