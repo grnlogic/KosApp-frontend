@@ -28,7 +28,7 @@ const LoginScreen = ({
   // Replace undefined with a fallback URL
   const backendUrl =
     process.env.REACT_APP_BACKEND_URL ||
-    "https://backend-kos-app.up.railway.app";
+    "manage-kost-production.up.railway.app";
   const [logoMove, setLogoMove] = useState(false);
   const [logoColorChange, setLogoColorChange] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
