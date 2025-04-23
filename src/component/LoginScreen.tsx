@@ -83,19 +83,30 @@ const LoginScreen = ({
   const [role, setRole] = useState(""); // Tambahkan state untuk role
   const handleLogin = async () => {
     setIsLoading(true); // Mulai animasi loading
+    setError(""); // Reset error message
+
     try {
-      // Simulasikan durasi animasi loading selama 4 detik
+      // Simulasikan durasi animasi loading selama 2 detik
       await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      console.log(`Attempting to login with backend URL: ${backendUrl}`);
 
       const response = await fetch(`${backendUrl}/api/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Origin: window.location.origin,
+        },
+        credentials: "include", // Include cookies in the request
+        mode: "cors", // Explicitly specify CORS mode
         body: JSON.stringify({ username, password }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem("authToken", data.token); // Simpan token dengan kunci 'authToken'        console.log("Navigating to:", `/home${data.roomId}`); // Log rute yang akan digunakan
+        console.log("Login successful, received data:", data);
+        localStorage.setItem("authToken", data.token); // Simpan token dengan kunci 'authToken'
         setIsLoggedIn(true);
         setRoomId(data.roomId); // Setel roomId dari respons backend
         localStorage.setItem("roomId", data.roomId); // Simpan roomId di local storage
@@ -114,10 +125,35 @@ const LoginScreen = ({
           navigate("/Landingpage"); // Arahkan ke halaman Landingpage jika roomId tidak valid
         }
       } else {
-        setError("Login gagal, periksa kembali username dan password");
+        const errorText = await response.text();
+        console.error("Login failed:", errorText);
+        setError(`Login gagal: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
-      setError("Terjadi kesalahan saat login. Silakan coba lagi.");
+      console.error("Login error:", error);
+      setError(
+        "Terjadi kesalahan saat login. Kemungkinan masalah CORS. Silakan hubungi admin."
+      );
+
+      // Display more helpful error with SweetAlert2
+      Swal.fire({
+        title: "Error Koneksi",
+        text: "Tidak dapat terhubung ke server. Ini mungkin masalah CORS atau server sedang down.",
+        icon: "error",
+        confirmButtonText: "Coba Lagi",
+        showCancelButton: true,
+        cancelButtonText: "Hubungi Admin",
+        confirmButtonColor: "#FEBF00",
+        cancelButtonColor: "#3085d6",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // User clicked "Try Again"
+          handleLogin();
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+          // User clicked "Contact Admin"
+          window.open("https://wa.me/0895352281010", "_blank");
+        }
+      });
     } finally {
       setIsLoading(false); // Hentikan animasi loading
     }
