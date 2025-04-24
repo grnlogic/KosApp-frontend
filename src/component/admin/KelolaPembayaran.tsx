@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Check,
   Clock,
@@ -9,52 +9,158 @@ import {
   Trash2,
   CreditCard,
   DollarSign,
-  Calendar,
 } from "lucide-react";
 import { JSX } from "react/jsx-runtime";
+import axios from "axios";
+
+const API_BASE_URL = "https://manage-kost-production.up.railway.app"; // production URL
+
+// Define types for the data
+interface PaymentItem {
+  id: number;
+  kamar: string;
+  penghuni: string;
+  nominal: string;
+  status: string;
+  roomId?: number;
+  userId?: number;
+}
+
+// Updated interface to match the backend Kamar model
+interface KamarData {
+  id: number;
+  nomorKamar: string;
+  status: string;
+  hargaBulanan: number;
+  fasilitas: string;
+  title: string;
+  description: string;
+  price: number;
+  statusPembayaran: string;
+}
+
+interface UserData {
+  id: number;
+  username: string;
+  email: string;
+  roomId?: number;
+  role: string;
+}
+
+interface ProfileData {
+  id: number;
+  userId: number;
+  status: string;
+  createdAt?: string;
+}
 
 export default function KelolaPembayaran() {
-  const [pembayaran, setPembayaran] = useState([
-    {
-      id: 1,
-      kamar: "A-101",
-      penghuni: "John Doe",
-      tanggal: "1 Mar 2024",
-      nominal: "Rp 1.500.000",
-      status: "Lunas",
-    },
-    {
-      id: 2,
-      kamar: "A-102",
-      penghuni: "Jane Smith",
-      tanggal: "5 Mar 2024",
-      nominal: "Rp 1.200.000",
-      status: "Belum Bayar",
-    },
-  ]);
+  // State for storing data from backend with proper types
+  const [pembayaran, setPembayaran] = useState<PaymentItem[]>([]);
+  const [rooms, setRooms] = useState<KamarData[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [profiles, setProfiles] = useState<ProfileData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // UI state
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     kamar: "",
     penghuni: "",
-    tanggal: "",
     totalTagihan: "",
     jatuhTempo: "",
     status: "Belum Bayar",
   });
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Fetch data from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch rooms data
+        const roomsResponse = await axios.get<KamarData[]>(
+          `${API_BASE_URL}/api/kamar`
+        );
+        setRooms(roomsResponse.data);
+
+        // Fetch users data
+        const usersResponse = await axios.get<UserData[]>(
+          `${API_BASE_URL}/api/auth/users`
+        );
+        setUsers(usersResponse.data);
+
+        // Fetch profiles data
+        const profilesResponse = await axios.get<ProfileData[]>(
+          `${API_BASE_URL}/api/profiles`
+        );
+        setProfiles(profilesResponse.data);
+
+        // Combine data to create payment list
+        const combinedData: PaymentItem[] = roomsResponse.data.map((room) => {
+          const user = usersResponse.data.find((u) => u.roomId === room.id);
+
+          return {
+            id: room.id,
+            kamar: room.nomorKamar || "N/A",
+            penghuni: user?.username || "N/A",
+            nominal: `Rp ${room.hargaBulanan?.toLocaleString("id-ID") || 0}`,
+            status: room.statusPembayaran || "Belum Bayar",
+            roomId: room.id,
+            userId: user?.id,
+          };
+        });
+
+        setPembayaran(combinedData);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("Failed to load data. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Calculate summary statistics
+  const paymentSummary = {
+    lunas: pembayaran
+      .filter((item) => item.status === "Lunas")
+      .reduce(
+        (sum, item) => sum + parseFloat(item.nominal.replace(/[^\d]/g, "")),
+        0
+      ),
+    menunggu: pembayaran
+      .filter((item) => item.status === "Menunggu")
+      .reduce(
+        (sum, item) => sum + parseFloat(item.nominal.replace(/[^\d]/g, "")),
+        0
+      ),
+    belumBayar: pembayaran
+      .filter((item) => item.status === "Belum Bayar")
+      .reduce(
+        (sum, item) => sum + parseFloat(item.nominal.replace(/[^\d]/g, "")),
+        0
+      ),
+  };
+
+  // Handling form functions
   const resetForm = () => {
     setSelectedId(null);
     setFormData({
       kamar: "",
       penghuni: "",
-      tanggal: "",
       totalTagihan: "",
       jatuhTempo: "",
       status: "Belum Bayar",
     });
-    setShowForm(true); // Tampilkan form saat tombol ditekan
+    setShowForm(true);
   };
 
   const handleEdit = (id: number) => {
@@ -64,59 +170,85 @@ export default function KelolaPembayaran() {
       setFormData({
         kamar: data.kamar,
         penghuni: data.penghuni,
-        tanggal: data.tanggal,
         totalTagihan: data.nominal.replace("Rp ", "").replace(/\./g, ""),
-        jatuhTempo: "2025-01-25", // dummy value
+        jatuhTempo: "",
         status: data.status,
       });
     }
-    setShowForm(true); // Tampilkan form juga saat mengedit
+    setShowForm(true);
   };
 
-  const handleDelete = (id: number) => {
-    setPembayaran(pembayaran.filter((item) => item.id !== id));
-    if (selectedId === id) {
-      resetForm();
+  const handleDelete = async (id: number) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/api/kamar/${id}`);
+      setPembayaran(pembayaran.filter((item) => item.id !== id));
+      if (selectedId === id) {
+        resetForm();
+        setShowForm(false);
+      }
+    } catch (err) {
+      console.error("Error deleting payment:", err);
+      alert("Failed to delete payment. Please try again.");
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      if (selectedId) {
+        // Get the room data
+        const roomResponse = await axios.get(
+          `${API_BASE_URL}/api/kamar/${selectedId}`
+        );
+        const roomData = roomResponse.data;
+
+        // Update status
+        roomData.statusPembayaran = formData.status;
+
+        // Update room data
+        await axios.put(`${API_BASE_URL}/api/kamar/${selectedId}`, roomData);
+
+        // Update local state
+        setPembayaran(
+          pembayaran.map((item) =>
+            item.id === selectedId
+              ? {
+                  ...item,
+                  status: formData.status,
+                }
+              : item
+          )
+        );
+      } else {
+        // For new payments, we would need additional APIs
+        alert("Adding new payments is not implemented in this version");
+      }
+
       setShowForm(false);
+    } catch (err) {
+      console.error("Error saving payment:", err);
+      alert("Failed to save payment. Please try again.");
     }
   };
 
-  const handleSave = () => {
-    const formattedNominal = `Rp ${Number(formData.totalTagihan).toLocaleString(
-      "id-ID"
-    )}`;
+  // Filter payments based on search query
+  const filteredPayments = pembayaran.filter(
+    (payment) =>
+      payment.kamar.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.penghuni.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-    if (selectedId) {
-      // Update existing
-      setPembayaran(
-        pembayaran.map((item) =>
-          item.id === selectedId
-            ? {
-                ...item,
-                kamar: formData.kamar,
-                penghuni: formData.penghuni,
-                tanggal: formData.tanggal,
-                nominal: formattedNominal,
-                status: formData.status,
-              }
-            : item
-        )
-      );
-    } else {
-      // Tambah baru
-      const newItem = {
-        id: Date.now(),
-        kamar: formData.kamar,
-        penghuni: formData.penghuni,
-        tanggal: formData.tanggal,
-        nominal: formattedNominal,
-        status: formData.status,
-      };
-      setPembayaran([...pembayaran, newItem]);
-    }
-    resetForm();
-    setShowForm(false); // Sembunyikan form setelah simpan
-  };
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  if (error)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-500">
+        {error}
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -140,7 +272,9 @@ export default function KelolaPembayaran() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Lunas</p>
-                  <p className="text-xl font-bold">Rp 1.500.000</p>
+                  <p className="text-xl font-bold">
+                    Rp {paymentSummary.lunas.toLocaleString("id-ID")}
+                  </p>
                 </div>
               </div>
             </div>
@@ -154,7 +288,9 @@ export default function KelolaPembayaran() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Menunggu</p>
-                  <p className="text-xl font-bold">Rp 800.000</p>
+                  <p className="text-xl font-bold">
+                    Rp {paymentSummary.menunggu.toLocaleString("id-ID")}
+                  </p>
                 </div>
               </div>
             </div>
@@ -168,7 +304,9 @@ export default function KelolaPembayaran() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Belum Bayar</p>
-                  <p className="text-xl font-bold">Rp 1.200.000</p>
+                  <p className="text-xl font-bold">
+                    Rp {paymentSummary.belumBayar.toLocaleString("id-ID")}
+                  </p>
                 </div>
               </div>
             </div>
@@ -185,6 +323,8 @@ export default function KelolaPembayaran() {
               type="text"
               className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
               placeholder="Cari kamar atau penghuni..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <button
@@ -206,12 +346,6 @@ export default function KelolaPembayaran() {
                     Kamar
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                    Penghuni
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                    Tanggal
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
                     Nominal
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
@@ -223,19 +357,13 @@ export default function KelolaPembayaran() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {pembayaran.map((item) => (
+                {filteredPayments.map((item) => (
                   <tr
                     key={item.id}
                     className="hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap font-medium">
                       {item.kamar}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {item.penghuni}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {item.tanggal}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap font-medium">
                       {item.nominal}
@@ -271,6 +399,16 @@ export default function KelolaPembayaran() {
                     </td>
                   </tr>
                 ))}
+                {filteredPayments.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-6 py-4 text-center text-gray-500"
+                    >
+                      No data found
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -322,26 +460,6 @@ export default function KelolaPembayaran() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tanggal
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Calendar className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                    placeholder="1 Mar 2024"
-                    value={formData.tanggal}
-                    onChange={(e) =>
-                      setFormData({ ...formData, tanggal: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Total Tagihan
                 </label>
                 <div className="relative">
@@ -349,31 +467,10 @@ export default function KelolaPembayaran() {
                     <DollarSign className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
-                    type="number"
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                    type="text"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg bg-gray-100"
                     value={formData.totalTagihan}
-                    onChange={(e) =>
-                      setFormData({ ...formData, totalTagihan: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Jatuh Tempo
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Calendar className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="date"
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                    value={formData.jatuhTempo}
-                    onChange={(e) =>
-                      setFormData({ ...formData, jatuhTempo: e.target.value })
-                    }
+                    readOnly
                   />
                 </div>
               </div>
