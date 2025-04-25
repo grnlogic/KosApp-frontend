@@ -62,11 +62,7 @@ const Beranda = () => {
       {/* Navbar */}
       <div className="w-full bg-gradient-to-r from-yellow-500 to-yellow-400 p-4 flex items-center justify-between shadow-lg">
         <div className="flex items-center">
-          <img
-            src="https://via.placeholder.com/40"
-            alt="Logo"
-            className="w-10 h-10 rounded-full border-2 border-white mr-3"
-          />
+          <img src="/logo.svg" alt="KosApp Logo" className="w-10 h-10 mr-3" />
           <h1 className="text-white text-2xl font-bold tracking-wide">
             {typingText}
           </h1>
@@ -79,11 +75,7 @@ const Beranda = () => {
             ☰
           </button>
           <div className="flex items-center bg-white/20 px-4 py-2 rounded-full">
-            <img
-              src="https://via.placeholder.com/40"
-              alt="Profile"
-              className="w-8 h-8 rounded-full border-2 border-white"
-            />
+            <User className="w-8 h-8 text-white" />
             <span className="ml-2 text-white font-medium">Admin</span>
           </div>
         </div>

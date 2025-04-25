@@ -1,4 +1,15 @@
-import { Pencil, Key, Trash, X, ArrowLeft, Plus } from "lucide-react";
+import {
+  Pencil,
+  Key,
+  Trash,
+  X,
+  ArrowLeft,
+  Plus,
+  Eye,
+  EyeOff,
+  Check,
+  AlertCircle,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import axios, { AxiosError } from "axios";
@@ -29,14 +40,33 @@ export default function EditAkunPenghuni() {
     useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Get authentication token from localStorage
+  const getAuthToken = () => {
+    return localStorage.getItem("token");
+  };
+
+  // Create axios instance with auth headers
+  const getAuthHeader = () => {
+    const token = getAuthToken();
+    return {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+        "Content-Type": "application/json",
+      },
+    };
+  };
 
   // Mengambil data pengguna dari backend
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
       console.log("Fetching users from:", `${API_URL}/users`);
-      const response = await axios.get(`${API_URL}/users`);
+      const response = await axios.get(`${API_URL}/users`, getAuthHeader());
       console.log("Received response:", response.data);
 
       // Memastikan data sensitif tidak terekspos ke UI
@@ -147,8 +177,11 @@ export default function EditAkunPenghuni() {
             },
           });
 
-          // Make a real API call to delete the user
-          const response = await axios.delete(`${API_URL}/users/${user.id}`);
+          // Make a real API call to delete the user with auth header
+          const response = await axios.delete(
+            `${API_URL}/users/${user.id}`,
+            getAuthHeader()
+          );
 
           if (response.status === 200) {
             // Remove user from local state
@@ -212,13 +245,17 @@ export default function EditAkunPenghuni() {
         },
       });
 
-      // Make a real API call to the backend
-      const response = await axios.put(`${API_URL}/users/${selectedUser.id}`, {
-        username: selectedUser.username,
-        email: selectedUser.email,
-        phoneNumber: selectedUser.phoneNumber,
-        roomId: selectedUser.roomId,
-      });
+      // Make a real API call to the backend with auth header
+      const response = await axios.put(
+        `${API_URL}/users/${selectedUser.id}`,
+        {
+          username: selectedUser.username,
+          email: selectedUser.email,
+          phoneNumber: selectedUser.phoneNumber,
+          roomId: selectedUser.roomId,
+        },
+        getAuthHeader()
+      );
 
       // Update local state on successful response
       if (response.status === 200) {
@@ -255,9 +292,42 @@ export default function EditAkunPenghuni() {
     }
   };
 
+  // Validate password
+  const validatePassword = (password: string): string[] => {
+    const errors: string[] = [];
+
+    if (password.length < 8) {
+      errors.push("Password harus minimal 8 karakter");
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      errors.push("Password harus memiliki minimal 1 huruf kapital");
+    }
+
+    if (!/[0-9]/.test(password)) {
+      errors.push("Password harus memiliki minimal 1 angka");
+    }
+
+    return errors;
+  };
+
   const handlePasswordReset = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
-    if (!selectedUser || !newPassword) return;
+    if (!selectedUser) return;
+
+    // Validate password
+    const errors = validatePassword(newPassword);
+
+    if (errors.length > 0) {
+      setPasswordErrors(errors);
+      return;
+    }
+
+    // Check if passwords match
+    if (newPassword !== confirmPassword) {
+      setPasswordErrors(["Password dan konfirmasi password tidak sesuai"]);
+      return;
+    }
 
     try {
       // Show loading indicator
@@ -269,10 +339,11 @@ export default function EditAkunPenghuni() {
         },
       });
 
-      // Make a real API call to reset the password
+      // Make a real API call to reset the password with auth header
       const response = await axios.put(
         `${API_URL}/users/${selectedUser.id}/reset-password`,
-        { newPassword }
+        { newPassword },
+        getAuthHeader()
       );
 
       // Check if response was successful
@@ -558,16 +629,99 @@ export default function EditAkunPenghuni() {
                   Anda akan mereset password untuk penghuni:{" "}
                   <strong>{selectedUser.username}</strong>
                 </p>
-                <label className="block text-gray-700 text-sm font-bold mb-2">
-                  Password Baru
-                </label>
-                <input
-                  type="password"
-                  className="border rounded w-full py-2 px-3"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                />
+
+                {/* Password field with toggle visibility */}
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-bold mb-2">
+                    Password Baru
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={passwordVisible ? "text" : "password"}
+                      className="border rounded w-full py-2 px-3 pr-10"
+                      value={newPassword}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        setPasswordErrors(validatePassword(e.target.value));
+                      }}
+                      required
+                    />
+                    <div
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer"
+                      onClick={() => setPasswordVisible(!passwordVisible)}
+                    >
+                      {passwordVisible ? (
+                        <EyeOff className="h-5 w-5 text-gray-500" />
+                      ) : (
+                        <Eye className="h-5 w-5 text-gray-500" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Confirm password field */}
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-bold mb-2">
+                    Konfirmasi Password
+                  </label>
+                  <input
+                    type={passwordVisible ? "text" : "password"}
+                    className="border rounded w-full py-2 px-3"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
+
+                {/* Password requirements */}
+                <div className="mt-2 text-sm">
+                  <p className="font-semibold mb-1">
+                    Password harus memenuhi kriteria berikut:
+                  </p>
+                  <ul className="space-y-1">
+                    <li className="flex items-center">
+                      {newPassword.length >= 8 ? (
+                        <Check className="h-4 w-4 text-green-500 mr-1" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-red-500 mr-1" />
+                      )}
+                      Minimal 8 karakter
+                    </li>
+                    <li className="flex items-center">
+                      {/[A-Z]/.test(newPassword) ? (
+                        <Check className="h-4 w-4 text-green-500 mr-1" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-red-500 mr-1" />
+                      )}
+                      Memiliki minimal 1 huruf kapital
+                    </li>
+                    <li className="flex items-center">
+                      {/[0-9]/.test(newPassword) ? (
+                        <Check className="h-4 w-4 text-green-500 mr-1" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-red-500 mr-1" />
+                      )}
+                      Memiliki minimal 1 angka
+                    </li>
+                    <li className="flex items-center">
+                      {newPassword === confirmPassword && newPassword !== "" ? (
+                        <Check className="h-4 w-4 text-green-500 mr-1" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-red-500 mr-1" />
+                      )}
+                      Password dan konfirmasi harus sama
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Display validation errors */}
+                {passwordErrors.length > 0 && (
+                  <div className="mt-2 text-red-500 text-sm">
+                    {passwordErrors.map((error, index) => (
+                      <p key={index}>{error}</p>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2">
@@ -595,6 +749,11 @@ export default function EditAkunPenghuni() {
                 <button
                   type="submit"
                   className="bg-black text-white py-2 px-4 rounded"
+                  disabled={
+                    passwordErrors.length > 0 ||
+                    newPassword !== confirmPassword ||
+                    newPassword.length === 0
+                  }
                 >
                   Reset Password
                 </button>

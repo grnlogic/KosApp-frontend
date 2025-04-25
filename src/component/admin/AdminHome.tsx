@@ -18,6 +18,28 @@ import {
   HelpCircle,
 } from "lucide-react";
 import axios from "axios";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+} from "chart.js";
+import { Bar, Pie, Doughnut } from "react-chartjs-2";
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+);
 
 const API_BASE_URL = "https://manage-kost-production.up.railway.app";
 
@@ -501,18 +523,35 @@ const HomePanel: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              <div className="h-full flex items-end justify-between px-2">
-                {roomOccupancyData.map((data, index) => (
-                  <div key={index} className="flex flex-col items-center">
-                    <div
-                      className="w-12 bg-blue-600 rounded-t-md"
-                      style={{ height: `${data.occupancy * 0.7}%` }}
-                    ></div>
-                    <div className="mt-2 text-xs">{data.month}</div>
-                    <div className="text-xs font-medium">{data.occupancy}%</div>
-                  </div>
-                ))}
-              </div>
+              <Bar
+                data={{
+                  labels: roomOccupancyData.map((d) => d.month),
+                  datasets: [
+                    {
+                      label: "Tingkat Okupansi (%)",
+                      data: roomOccupancyData.map((d) => d.occupancy),
+                      backgroundColor: "rgba(59, 130, 246, 0.7)",
+                      borderColor: "rgb(59, 130, 246)",
+                      borderWidth: 1,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: true },
+                  },
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      max: 100,
+                      ticks: { callback: (value) => `${value}%` },
+                    },
+                  },
+                }}
+              />
             </div>
           </CardContent>
         </Card>
@@ -525,20 +564,36 @@ const HomePanel: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              <div className="h-full flex items-end justify-between px-2">
-                {revenueData.map((data, index) => (
-                  <div key={index} className="flex flex-col items-center">
-                    <div
-                      className="w-12 bg-green-600 rounded-t-md"
-                      style={{ height: `${(data.amount / 12000000) * 100}%` }}
-                    ></div>
-                    <div className="mt-2 text-xs">{data.month}</div>
-                    <div className="text-xs font-medium">
-                      {formatCurrency(data.amount).split(",")[0]}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <Bar
+                data={{
+                  labels: revenueData.map((d) => d.month),
+                  datasets: [
+                    {
+                      label: "Pendapatan (Rp)",
+                      data: revenueData.map((d) => d.amount),
+                      backgroundColor: "rgba(22, 163, 74, 0.7)",
+                      borderColor: "rgb(22, 163, 74)",
+                      borderWidth: 1,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      callbacks: {
+                        label: (context) => {
+                          return formatCurrency(context.raw as number).split(
+                            ","
+                          )[0];
+                        },
+                      },
+                    },
+                  },
+                }}
+              />
             </div>
           </CardContent>
         </Card>
@@ -552,40 +607,50 @@ const HomePanel: React.FC = () => {
             <CardTitle>Status Kamar</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex justify-center space-x-4">
-              <div className="flex flex-col items-center">
-                <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="bg-blue-600 h-full"
-                    style={{ width: `${summaryData.occupancyRate}%` }}
-                  ></div>
-                </div>
-                <div className="mt-2 text-sm">
-                  Terisi ({summaryData.occupancyRate}%)
-                </div>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="bg-green-600 h-full"
-                    style={{
-                      width: `${100 - summaryData.occupancyRate - 10}%`,
-                    }}
-                  ></div>
-                </div>
-                <div className="mt-2 text-sm">
-                  Tersedia ({100 - summaryData.occupancyRate - 10}%)
-                </div>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="bg-yellow-600 h-full"
-                    style={{ width: "10%" }}
-                  ></div>
-                </div>
-                <div className="mt-2 text-sm">Pemeliharaan (10%)</div>
-              </div>
+            <div className="flex items-center justify-center h-64">
+              <Doughnut
+                data={{
+                  labels: ["Terisi", "Tersedia", "Pemeliharaan"],
+                  datasets: [
+                    {
+                      data: [
+                        summaryData.occupancyRate,
+                        100 - summaryData.occupancyRate - 10,
+                        10,
+                      ],
+                      backgroundColor: [
+                        "rgba(59, 130, 246, 0.7)",
+                        "rgba(22, 163, 74, 0.7)",
+                        "rgba(202, 138, 4, 0.7)",
+                      ],
+                      borderColor: [
+                        "rgb(59, 130, 246)",
+                        "rgb(22, 163, 74)",
+                        "rgb(202, 138, 4)",
+                      ],
+                      borderWidth: 1,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: "bottom",
+                      labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                      },
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: (context) => `${context.label}: ${context.raw}%`,
+                      },
+                    },
+                  },
+                }}
+              />
             </div>
           </CardContent>
         </Card>
@@ -596,34 +661,46 @@ const HomePanel: React.FC = () => {
             <CardTitle>Status Pembersihan</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex justify-center space-x-4">
-              <div className="flex flex-col items-center">
-                <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="bg-green-600 h-full"
-                    style={{ width: "60%" }}
-                  ></div>
-                </div>
-                <div className="mt-2 text-sm">Selesai (60%)</div>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="bg-blue-600 h-full"
-                    style={{ width: "15%" }}
-                  ></div>
-                </div>
-                <div className="mt-2 text-sm">Proses (15%)</div>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="bg-yellow-600 h-full"
-                    style={{ width: "25%" }}
-                  ></div>
-                </div>
-                <div className="mt-2 text-sm">Tertunda (25%)</div>
-              </div>
+            <div className="flex items-center justify-center h-64">
+              <Doughnut
+                data={{
+                  labels: ["Selesai", "Proses", "Tertunda"],
+                  datasets: [
+                    {
+                      data: [60, 15, 25],
+                      backgroundColor: [
+                        "rgba(22, 163, 74, 0.7)",
+                        "rgba(59, 130, 246, 0.7)",
+                        "rgba(202, 138, 4, 0.7)",
+                      ],
+                      borderColor: [
+                        "rgb(22, 163, 74)",
+                        "rgb(59, 130, 246)",
+                        "rgb(202, 138, 4)",
+                      ],
+                      borderWidth: 1,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: "bottom",
+                      labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                      },
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: (context) => `${context.label}: ${context.raw}%`,
+                      },
+                    },
+                  },
+                }}
+              />
             </div>
           </CardContent>
         </Card>
@@ -634,62 +711,59 @@ const HomePanel: React.FC = () => {
             <CardTitle>Status Pembayaran</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex justify-center space-x-4">
-              <div className="flex flex-col items-center">
-                <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="bg-green-600 h-full"
-                    style={{
-                      width: `${Math.round(
-                        ((summaryData.totalPayments -
-                          summaryData.pendingPayments) /
-                          summaryData.totalPayments) *
-                          100
-                      )}%`,
-                    }}
-                  ></div>
-                </div>
-                <div className="mt-2 text-sm">
-                  Lunas (
-                  {Math.round(
-                    ((summaryData.totalPayments - summaryData.pendingPayments) /
-                      summaryData.totalPayments) *
-                      100
-                  )}
-                  %)
-                </div>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="bg-yellow-600 h-full"
-                    style={{
-                      width: `${Math.round(
-                        (summaryData.pendingPayments /
-                          summaryData.totalPayments) *
-                          95
-                      )}%`,
-                    }}
-                  ></div>
-                </div>
-                <div className="mt-2 text-sm">
-                  Tertunda (
-                  {Math.round(
-                    (summaryData.pendingPayments / summaryData.totalPayments) *
-                      95
-                  )}
-                  %)
-                </div>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="bg-red-600 h-full"
-                    style={{ width: "5%" }}
-                  ></div>
-                </div>
-                <div className="mt-2 text-sm">Dibatalkan (5%)</div>
-              </div>
+            <div className="flex items-center justify-center h-64">
+              <Doughnut
+                data={{
+                  labels: ["Lunas", "Tertunda", "Dibatalkan"],
+                  datasets: [
+                    {
+                      data: [
+                        Math.round(
+                          ((summaryData.totalPayments -
+                            summaryData.pendingPayments) /
+                            summaryData.totalPayments) *
+                            100
+                        ),
+                        Math.round(
+                          (summaryData.pendingPayments /
+                            summaryData.totalPayments) *
+                            95
+                        ),
+                        5,
+                      ],
+                      backgroundColor: [
+                        "rgba(22, 163, 74, 0.7)",
+                        "rgba(202, 138, 4, 0.7)",
+                        "rgba(220, 38, 38, 0.7)",
+                      ],
+                      borderColor: [
+                        "rgb(22, 163, 74)",
+                        "rgb(202, 138, 4)",
+                        "rgb(220, 38, 38)",
+                      ],
+                      borderWidth: 1,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: "bottom",
+                      labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                      },
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: (context) => `${context.label}: ${context.raw}%`,
+                      },
+                    },
+                  },
+                }}
+              />
             </div>
           </CardContent>
         </Card>
@@ -704,36 +778,40 @@ const HomePanel: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-center h-64">
-              <div className="flex space-x-6">
-                <div className="flex flex-col items-center">
-                  <div className="relative w-32 h-32 rounded-full">
-                    <div
-                      className="absolute inset-0 rounded-full border-8 border-purple-600"
-                      style={{
-                        clipPath:
-                          "polygon(50% 50%, 100% 50%, 100% 0, 0 0, 0 50%)",
-                      }}
-                    ></div>
-                    <div
-                      className="absolute inset-0 rounded-full border-8 border-blue-600"
-                      style={{
-                        clipPath:
-                          "polygon(50% 50%, 0 50%, 0 100%, 100% 100%, 100% 50%)",
-                      }}
-                    ></div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-purple-600 rounded-full mr-2"></div>
-                    <span className="text-sm">Fasilitas (50%)</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
-                    <span className="text-sm">Prosedur (50%)</span>
-                  </div>
-                </div>
-              </div>
+              <Pie
+                data={{
+                  labels: ["Fasilitas", "Prosedur"],
+                  datasets: [
+                    {
+                      data: [50, 50],
+                      backgroundColor: [
+                        "rgba(147, 51, 234, 0.7)",
+                        "rgba(59, 130, 246, 0.7)",
+                      ],
+                      borderColor: ["rgb(147, 51, 234)", "rgb(59, 130, 246)"],
+                      borderWidth: 1,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: "right",
+                      labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                      },
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: (context) => `${context.label}: ${context.raw}%`,
+                      },
+                    },
+                  },
+                }}
+              />
             </div>
           </CardContent>
         </Card>
@@ -745,45 +823,45 @@ const HomePanel: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-center h-64">
-              <div className="flex space-x-6">
-                <div className="flex flex-col items-center">
-                  <div className="relative w-32 h-32 rounded-full">
-                    <div
-                      className="absolute inset-0 rounded-full border-8 border-indigo-600"
-                      style={{
-                        clipPath: "polygon(50% 50%, 100% 50%, 100% 0, 50% 0)",
-                      }}
-                    ></div>
-                    <div
-                      className="absolute inset-0 rounded-full border-8 border-green-600"
-                      style={{
-                        clipPath: "polygon(50% 50%, 50% 0, 0 0, 0 50%)",
-                      }}
-                    ></div>
-                    <div
-                      className="absolute inset-0 rounded-full border-8 border-yellow-600"
-                      style={{
-                        clipPath:
-                          "polygon(50% 50%, 0 50%, 0 100%, 100% 100%, 100% 50%)",
-                      }}
-                    ></div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-indigo-600 rounded-full mr-2"></div>
-                    <span className="text-sm">Kartu Kredit (25%)</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
-                    <span className="text-sm">Transfer Bank (25%)</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-yellow-600 rounded-full mr-2"></div>
-                    <span className="text-sm">Tunai (50%)</span>
-                  </div>
-                </div>
-              </div>
+              <Pie
+                data={{
+                  labels: ["Kartu Kredit", "Transfer Bank", "Tunai"],
+                  datasets: [
+                    {
+                      data: [25, 25, 50],
+                      backgroundColor: [
+                        "rgba(79, 70, 229, 0.7)",
+                        "rgba(22, 163, 74, 0.7)",
+                        "rgba(202, 138, 4, 0.7)",
+                      ],
+                      borderColor: [
+                        "rgb(79, 70, 229)",
+                        "rgb(22, 163, 74)",
+                        "rgb(202, 138, 4)",
+                      ],
+                      borderWidth: 1,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: "right",
+                      labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                      },
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: (context) => `${context.label}: ${context.raw}%`,
+                      },
+                    },
+                  },
+                }}
+              />
             </div>
           </CardContent>
         </Card>

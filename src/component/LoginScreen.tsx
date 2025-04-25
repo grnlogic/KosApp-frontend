@@ -127,7 +127,29 @@ const LoginScreen = ({
       } else {
         const errorText = await response.text();
         console.error("Login failed:", errorText);
-        setError(`Login gagal: ${response.status} ${response.statusText}`);
+
+        // Gunakan SweetAlert2 untuk menampilkan pesan kesalahan password
+        if (
+          response.status === 401 ||
+          errorText.toLowerCase().includes("password") ||
+          errorText.toLowerCase().includes("credentials")
+        ) {
+          Swal.fire({
+            title: "Login Gagal",
+            text: "Username atau password yang Anda masukkan salah",
+            icon: "error",
+            confirmButtonText: "Coba Lagi",
+            confirmButtonColor: "#FEBF00",
+            showClass: {
+              popup: "animate__animated animate__fadeInDown",
+            },
+            hideClass: {
+              popup: "animate__animated animate__fadeOutUp",
+            },
+          });
+        } else {
+          setError(`Login gagal: ${response.status} ${response.statusText}`);
+        }
       }
     } catch (error) {
       console.error("Login error:", error);
