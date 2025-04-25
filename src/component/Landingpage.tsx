@@ -358,9 +358,9 @@ const LandingPage: React.FC = () => {
         {/* Location Section */}
         <section className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-3xl shadow-lg p-8 md:p-12 mb-16 overflow-hidden relative">
           <div className="absolute inset-0 z-0">
-            <img 
-              src={locationImage} 
-              alt="Location background" 
+            <img
+              src={locationImage}
+              alt="Location background"
               className="w-full h-full object-cover rounded-3xl opacity-20"
             />
           </div>

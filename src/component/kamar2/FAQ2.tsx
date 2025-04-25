@@ -16,7 +16,7 @@ export default function FAQPage() {
   const [faqs, setFaqs] = useState<FAQ[]>([]);
 
   useEffect(() => {
-    fetch("http://localhost:8080/api/faqs")
+    fetch("https://manage-kost-production.up.railway.app/api/faqs")
       .then((response) => response.json())
       .then((data) => {
         console.log("Fetched FAQs:", data);
