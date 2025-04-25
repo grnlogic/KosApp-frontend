@@ -21,6 +21,11 @@ import DetailRoom from "./DetailRoom";
 import Particles from "react-tsparticles";
 import axios from "axios"; // Import axios for API calls
 
+// Import the room image that will be used for all cards
+import roomImage from "../component/image2/20250415_113110.jpg";
+// Import location background image from the same folder
+import locationImage from "../component/image2/20250415_113202.jpg";
+
 interface Card {
   id: string; // Change id type to string
   nomorKamar: string;
@@ -46,7 +51,7 @@ const CardList = () => {
         setCards(
           response.data.map((item: Card) => ({
             ...item,
-            image: item.image || "default-image.jpg", // Ensure image is always a string
+            // We'll override the image in the rendering
           }))
         )
       )
@@ -67,9 +72,11 @@ const CardList = () => {
           >
             <div className="relative">
               <img
-                src={item.image}
-                alt={item.nomorKamar}
-                className="w-full h-56 object-cover"
+                src={roomImage}
+                alt={`Kamar ${item.nomorKamar}`}
+                className={`w-full h-56 object-cover transition-all duration-300 ${
+                  item.status !== "kosong" ? "blur-[4px]" : ""
+                }`}
               />
               <div className="absolute top-3 right-3">
                 <span
@@ -112,7 +119,7 @@ const CardList = () => {
         <DetailRoom
           card={{
             ...selectedCard,
-            image: selectedCard.image || "default-image.jpg", // Ensure image is always a string
+            image: roomImage, // Use the imported image for detail view too
           }}
           onClose={() => setSelectedCard(null)}
         />
@@ -350,6 +357,13 @@ const LandingPage: React.FC = () => {
 
         {/* Location Section */}
         <section className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-3xl shadow-lg p-8 md:p-12 mb-16 overflow-hidden relative">
+          <div className="absolute inset-0 z-0">
+            <img 
+              src={locationImage} 
+              alt="Location background" 
+              className="w-full h-full object-cover rounded-3xl opacity-20"
+            />
+          </div>
           <div className="absolute -right-16 bottom-0 w-64 h-64 rounded-full bg-yellow-200 opacity-40"></div>
 
           <motion.div
