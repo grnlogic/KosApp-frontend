@@ -65,9 +65,7 @@ export default function EditAkunPenghuni() {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      console.log("Fetching users from:", `${API_URL}/users`);
       const response = await axios.get(`${API_URL}/users`, getAuthHeader());
-      console.log("Received response:", response.data);
 
       // Memastikan data sensitif tidak terekspos ke UI
       const sanitizedUsers = response.data.map((user: any) => ({
@@ -399,7 +397,6 @@ export default function EditAkunPenghuni() {
       title: `Berpindah ke halaman ${page}`,
     });
     // Logic to change page would go here
-    console.log("Going to page:", page);
   };
 
   return (

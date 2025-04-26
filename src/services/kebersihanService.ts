@@ -14,14 +14,12 @@ const api = axios.create({
 
 // Add request interceptor for debugging
 api.interceptors.request.use((request) => {
-  console.log("Request:", request);
   return request;
 });
 
 // Add response interceptor for debugging
 api.interceptors.response.use(
   (response) => {
-    console.log("Response:", response);
     return response;
   },
   (error) => {
@@ -108,10 +106,8 @@ export const updateKebersihan = async (
     // Ensure we're not sending createdAt/updatedAt fields which are managed by server
     const { createdAt, updatedAt, ...cleanData } = data as any;
 
-    console.log(
-      `Sending PUT request to ${API_URL}/${id} with data:`,
-      cleanData
-    );
+  
+    
     const response = await api.put(`/${id}`, cleanData);
     return response.data;
   } catch (error) {

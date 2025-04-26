@@ -89,7 +89,6 @@ const LoginScreen = ({
       // Simulasikan durasi animasi loading selama 2 detik
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      console.log(`Attempting to login with backend URL: ${backendUrl}`);
 
       const response = await fetch(`${backendUrl}/api/auth/login`, {
         method: "POST",
@@ -105,7 +104,6 @@ const LoginScreen = ({
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Login successful, received data:", data);
         localStorage.setItem("authToken", data.token); // Simpan token dengan kunci 'authToken'
         setIsLoggedIn(true);
         setRoomId(data.roomId); // Setel roomId dari respons backend

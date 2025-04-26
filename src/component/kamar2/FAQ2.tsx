@@ -19,7 +19,6 @@ export default function FAQPage() {
     fetch("https://manage-kost-production.up.railway.app/api/faqs")
       .then((response) => response.json())
       .then((data) => {
-        console.log("Fetched FAQs:", data);
         setFaqs(data);
       })
       .catch((error) => console.error("Error fetching FAQs:", error));

@@ -96,7 +96,7 @@ const Navbar = ({
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-orange-500 text-white shadow-md px-4 py-3 z-50">
+    <nav className="fixed top-0 left-0 right-0 bg-yellow-500 text-white shadow-md px-4 py-3 z-50">
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-4">
           <span className="font-bold text-xl">MiminKost</span>
@@ -124,48 +124,33 @@ const Navbar = ({
           <div className="relative">
             <button
               onClick={toggleLanguageDropdown}
-              className="bg-gray-700 px-4 py-2 rounded-md hover:bg-gray-600"
+              className="bg-yellow-600 text-white px-5 py-2 rounded-full font-medium hover:bg-yellow-700 transition-all duration-300 shadow-md flex items-center gap-2"
             >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m5 8 6 6 6-6"/>
+              </svg>
               Translate
             </button>
             {languageDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white text-black rounded-md shadow-lg">
-                <button
-                  onClick={() => handleLanguageChange("en")}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-200"
-                >
-                  English
-                </button>
-                <button
-                  onClick={() => handleLanguageChange("id")}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-200"
-                >
-                  Indonesian
-                </button>
-                <button
-                  onClick={() => handleLanguageChange("ja")}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-200"
-                >
-                  Japanese
-                </button>
-                <button
-                  onClick={() => handleLanguageChange("fr")}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-200"
-                >
-                  French
-                </button>
-                <button
-                  onClick={() => handleLanguageChange("de")}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-200"
-                >
-                  German
-                </button>
-                <button
-                  onClick={() => handleLanguageChange("es")}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-200"
-                >
-                  Spanish
-                </button>
+              <div className="absolute right-0 mt-2 w-48 bg-white text-black rounded-lg shadow-xl border border-gray-100 overflow-hidden transition-all duration-300 z-50">
+                {["en", "id", "ja", "fr", "de", "es"].map((code, index) => (
+                  <button
+                    key={code}
+                    onClick={() => handleLanguageChange(code)}
+                    className={`block w-full text-left px-4 py-3 hover:bg-yellow-50 transition-colors duration-200 flex items-center ${index !== 0 ? 'border-t border-gray-100' : ''}`}
+                  >
+                    <span className="w-8 h-5 inline-block mr-2 rounded border border-gray-200">
+                      {/* Language flag/indicator placeholder */}
+                    </span>
+                    {
+                      code === "en" ? "English" :
+                      code === "id" ? "Indonesian" :
+                      code === "ja" ? "Japanese" :
+                      code === "fr" ? "French" :
+                      code === "de" ? "German" : "Spanish"
+                    }
+                  </button>
+                ))}
               </div>
             )}
           </div>

@@ -73,7 +73,6 @@ export default function ProfilePage() {
         }
 
         const data = await res.text();
-        console.log("Gambar berhasil diunggah:", data);
       } catch (error) {
         console.error("Error uploading image:", error);
       }
@@ -155,7 +154,6 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchProfilePicture = async () => {
       const token = localStorage.getItem("authToken"); // Ambil token dari localStorage
-      console.log("Token:", token); // Log token untuk memastikan token ada
 
       if (!token) {
         console.error("Token tidak ditemukan. Pastikan Anda sudah login.");
@@ -188,7 +186,6 @@ export default function ProfilePage() {
     fetchProfilePicture();
   }, [profile.room]);
 
-  console.log("roomId:", profile.room);
 
   return (
     <div className="flex flex-col min-h-screen bg-[#FFF8E7]">

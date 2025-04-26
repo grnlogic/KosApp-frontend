@@ -140,14 +140,6 @@ const Layout = ({
     return <Navigate to="/" replace />;
   }
 
-  console.log("Current roomId:", roomId);
-  console.log("Current Path:", location.pathname);
-  console.log("isAdminRoute:", isAdminRoute);
-  console.log("isLandingPage:", isLandingPage);
-  console.log(
-    "Should Navbar Render:",
-    !isAdminRoute && !isLandingPage && location.pathname !== "/"
-  );
 
   return (
     <>
@@ -252,7 +244,6 @@ const AppWrapper = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [roomId, setRoomId] = useState<string>(""); // Tambahkan state roomId
 
-  console.log("setRoomId di App", roomId);
 
   useEffect(() => {
     const token = Cookies.get("authToken"); // Ambil token dari cookies

@@ -47,7 +47,6 @@ const EditPeraturan: React.FC = () => {
 
   const handleSave = () => {
     const token = localStorage.getItem("authToken");
-    console.log("Using token:", token); // Debug output
 
     const method = mode === "edit" ? "PUT" : "POST";
     const url =

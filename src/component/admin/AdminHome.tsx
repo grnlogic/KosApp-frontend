@@ -104,14 +104,12 @@ const HomePanel: React.FC = () => {
         // Fetch rooms data
         const roomsResponse = await axios.get(`${API_BASE_URL}/api/kamar`);
         const rooms = roomsResponse.data;
-        console.log("Rooms data:", rooms);
 
         // Fetch announcements data
         const announcementsResponse = await axios.get(
           `${API_BASE_URL}/api/pengumuman`
         );
         const announcements = announcementsResponse.data;
-        console.log("Announcements data:", announcements);
 
         // Fetch FAQs data
         const faqsResponse = await axios.get(`${API_BASE_URL}/api/faqs`);
