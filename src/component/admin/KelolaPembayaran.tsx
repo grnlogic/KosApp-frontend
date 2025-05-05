@@ -54,6 +54,22 @@ interface ProfileData {
   createdAt?: string;
 }
 
+export const refreshToken = async () => {
+  try {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (!refreshToken) return false;
+    
+    const response = await axios.post(`${API_BASE_URL}/api/auth/refresh-token`, { refreshToken });
+    localStorage.setItem("token", response.data.token);
+    return true;
+  } catch (error) {
+    console.error("Gagal memperbaharui token:", error);
+    localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
+    return false;
+  }
+};
+
 export default function KelolaPembayaran() {
   // State for storing data from backend with proper types
   const [pembayaran, setPembayaran] = useState<PaymentItem[]>([]);
@@ -90,6 +106,11 @@ export default function KelolaPembayaran() {
 
         // Fetch users data
         const token = localStorage.getItem("token");
+        if (!token) {
+          setError("Unauthorized access. Please log in.");
+          setLoading(false);
+          return;
+        }
 
         const usersResponse = await axios.get(`${API_BASE_URL}/api/users`, {
           headers: {
@@ -124,8 +145,20 @@ export default function KelolaPembayaran() {
         setPembayaran(combinedData);
         setError(null);
       } catch (err) {
-        console.error("Error fetching data:", err);
-        setError("Failed to load data. Please try again later.");
+       // Pesan error yang lebih informatif
+  if (axios.isAxiosError(err) && err.response) {
+    if (err.response.status === 403) {
+      setError("Akses ditolak. Pastikan Anda memiliki izin yang sesuai atau login kembali.");
+    } else if (err.response.status === 401) {
+      setError("Sesi login telah berakhir. Silakan login kembali.");
+      // Optional: redirect ke halaman login
+      // window.location.href = "/login";
+    } else {
+      setError(`Gagal memuat data: ${err.response.data?.message || err.message}`);
+    }
+  } else {
+    setError("Gagal memuat data. Silakan coba lagi nanti.");
+  }
       } finally {
         setLoading(false);
       }
