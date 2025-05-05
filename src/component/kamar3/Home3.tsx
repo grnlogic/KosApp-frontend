@@ -95,18 +95,18 @@ const Home3 = () => {
         onClick={onClick}
         className={`flex flex-col items-center justify-center ${
           isActive
-            ? "bg-[#FFCC00] text-white shadow-lg transform scale-105"
-            : "bg-white text-gray-700 border border-gray-100"
-        } rounded-2xl p-5 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] w-full max-w-[150px] h-[150px] font-bold`}
+            ? "bg-gradient-to-br from-[#FF7A00] to-[#FF9500] text-white shadow-lg"
+            : "bg-gradient-to-br from-[#FFCC00] to-[#FFDD33] text-gray-800 hover:from-[#FFDD33] hover:to-[#FFCC00]"
+        } rounded-xl p-4 shadow-md transition-all hover:shadow-lg w-full max-w-[150px] h-[150px] font-bold transform hover:scale-105 duration-200`}
       >
         <div
-          className={`w-10 h-10 flex items-center justify-center mb-3 ${
-            isActive ? "bg-white text-[#FFCC00]" : "bg-[#FFF8E7] text-[#FFCC00]"
-          } rounded-xl p-2`}
+          className={`w-10 h-10 flex items-center justify-center mb-2 ${
+            isActive ? "bg-white/20" : "bg-white/40"
+          } rounded-full p-2`}
         >
           {icon}
         </div>
-        <span className="text-sm text-center">{text}</span>
+        <span className="mt-1 text-sm text-center">{text}</span>
       </button>
     );
   };
@@ -114,7 +114,7 @@ const Home3 = () => {
   return (
     <div className="w-full flex flex-col items-center bg-[#FFF8E7] min-h-screen pt-16">
       {/* Header */}
-      <div className="w-full text-center bg-[#FFCC00] p-6 shadow-xl rounded-b-[30px] relative">
+      <div className="w-full text-center bg-gradient-to-br from-[#FFCC00] to-[#FF9500] p-6 shadow-lg rounded-b-[30px] relative">
         {/* Navigation bar */}
         <div className="absolute top-4 left-0 right-0 flex justify-between items-center px-6">
           <button
@@ -140,8 +140,8 @@ const Home3 = () => {
         </div>
 
         {/* Profile section */}
-        <div className="mt-8 relative flex flex-col items-center mb-4">
-          <div className="w-24 h-24 rounded-full overflow-hidden bg-white border-4 border-white shadow-lg">
+        <div className="relative flex flex-col items-center mb-4 mt-8">
+          <div className="w-28 h-28 rounded-full overflow-hidden bg-white border-4 border-white shadow-lg">
             {profilePicture ? (
               <img
                 src={profilePicture || "/placeholder.svg"}
@@ -150,15 +150,15 @@ const Home3 = () => {
               />
             ) : (
               <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                <User size={40} className="text-gray-400" />
+                <User size={50} className="text-gray-300" />
               </div>
             )}
           </div>
           <button
             onClick={triggerInputClick}
-            className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md hover:bg-gray-50 transform transition-transform hover:scale-110"
+            className="absolute bottom-2 right-[-40px] bg-white p-2.5 rounded-full shadow-lg hover:bg-gray-100 transition-colors"
           >
-            <Camera size={16} className="text-[#FFCC00]" />
+            <Camera size={18} className="text-[#FF7A00]" />
           </button>
           <input
             type="file"
@@ -169,16 +169,16 @@ const Home3 = () => {
           />
         </div>
         <h1 className="mt-4 text-white font-bold text-2xl">Selamat datang!</h1>
-        <h2 className="mt-1 text-white font-bold text-base bg-[#FFA500] inline-block px-4 py-1 rounded-full">
+        <h2 className="mt-1 text-white font-medium text-base bg-white/20 inline-block px-4 py-1 rounded-full">
           Kamar 3
         </h2>
       </div>
 
       {/* Menu Buttons */}
-      <div className="text-center px-6 -mt-6 max-w-4xl z-10 bg-transparent">
+      <div className="text-center px-6 mt-8 max-w-4xl w-full">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
           <MenuButton
-            icon={<HomeIcon />}
+            icon={<Key />}
             text="Info Kamar"
             isActive={activeContent === "infoKamar"}
             onClick={() => setActiveContent("infoKamar")}
@@ -205,19 +205,14 @@ const Home3 = () => {
 
         <button
           onClick={() => setActiveContent("notification")}
-          className={`${
-            activeContent === "notification"
-              ? "bg-[#FFCC00] text-white"
-              : "bg-white text-gray-700 border border-gray-100"
-          } rounded-xl p-4 shadow-md hover:shadow-lg transition-all hover:scale-[1.02] font-bold w-full mt-6 flex items-center justify-center gap-2`}
+          className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-4 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold w-full mt-6"
         >
-          <Bell size={18} />
-          <span>Peraturan & Pengumuman</span>
+          Peraturan & Pengumuman
         </button>
       </div>
 
       {/* Content Area */}
-      <div className="w-full mt-8 p-6 bg-white rounded-2xl shadow-lg max-w-4xl min-h-[400px] mb-10">
+      <div className="w-full mt-10 p-6 bg-white rounded-lg shadow-md max-w-4xl min-h-[400px] mb-10">
         <div className="mb-4">
           <h2 className="text-xl font-bold text-gray-800 border-b pb-3 mb-4">
             {activeContent === "infoKamar" && "Info Kamar"}

@@ -89,9 +89,13 @@ export default function KelolaPembayaran() {
         setRooms(roomsResponse.data);
 
         // Fetch users data
-        const usersResponse = await axios.get<UserData[]>(
-          `${API_BASE_URL}/api/auth/users`
-        );
+        const token = localStorage.getItem("token");
+
+        const usersResponse = await axios.get(`${API_BASE_URL}/api/users`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         setUsers(usersResponse.data);
 
         // Fetch profiles data
@@ -102,7 +106,9 @@ export default function KelolaPembayaran() {
 
         // Combine data to create payment list
         const combinedData: PaymentItem[] = roomsResponse.data.map((room) => {
-          const user = usersResponse.data.find((u) => u.roomId === room.id);
+          const user: UserData | undefined = usersResponse.data.find(
+            (u: UserData) => u.roomId === room.id
+          );
 
           return {
             id: room.id,

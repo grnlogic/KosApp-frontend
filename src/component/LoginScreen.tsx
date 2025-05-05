@@ -47,6 +47,22 @@ const LoginScreen = ({
   const [error, setError] = useState("");
   const navigate = useNavigate(); // Gunakan untuk navigasi
 
+  // Add new states for OTP verification
+  const [showOtpForm, setShowOtpForm] = useState(false);
+  const [showOtpFormAnimated, setShowOtpFormAnimated] = useState(false);
+  const [otp, setOtp] = useState("");
+  interface RegistrationData {
+    username: string;
+    email: string;
+    password: string;
+    phoneNumber: string;
+  }
+
+  const [registrationData, setRegistrationData] =
+    useState<RegistrationData | null>(null);
+  const [otpTimer, setOtpTimer] = useState(0);
+  const [isResendDisabled, setIsResendDisabled] = useState(false);
+
   useEffect(() => {
     setTimeout(() => {
       setLoading(false);
@@ -61,6 +77,19 @@ const LoginScreen = ({
       }, 700); // Slightly longer for logo movement to complete
     }, 2000); // Reduced loading time for better UX
   }, []);
+
+  // Add timer for OTP resend cooldown
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (otpTimer > 0 && isResendDisabled) {
+      interval = setInterval(() => {
+        setOtpTimer((prevTimer) => prevTimer - 1);
+      }, 1000);
+    } else if (otpTimer === 0 && isResendDisabled) {
+      setIsResendDisabled(false);
+    }
+    return () => clearInterval(interval);
+  }, [otpTimer, isResendDisabled]);
 
   const handleWelcomeLogin = () => {
     setFadeOutWelcome(true);
@@ -88,7 +117,6 @@ const LoginScreen = ({
     try {
       // Simulasikan durasi animasi loading selama 2 detik
       await new Promise((resolve) => setTimeout(resolve, 2000));
-
 
       const response = await fetch(`${backendUrl}/api/auth/login`, {
         method: "POST",
@@ -158,7 +186,7 @@ const LoginScreen = ({
       // Display more helpful error with SweetAlert2
       Swal.fire({
         title: "Error Koneksi",
-        text: "Tidak dapat terhubung ke server. Ini mungkin masalah CORS atau server sedang down.",
+        text: "Tidak dapat terhubung ke server. server sedang down.",
         icon: "error",
         confirmButtonText: "Coba Lagi",
         showCancelButton: true,
@@ -180,19 +208,247 @@ const LoginScreen = ({
   };
 
   const handleRegister = async () => {
-    if (!username || !email || !password || !phoneNumber) {
-      alert("Semua field harus diisi!");
+    // Add validation for form fields
+    if (!username || !email || !password || !confirmPassword || !phoneNumber) {
+      Swal.fire({
+        title: "Form Tidak Lengkap",
+        text: "Silakan isi semua field yang diperlukan",
+        icon: "warning",
+        confirmButtonColor: "#FEBF00",
+      });
       return;
     }
 
-    const response = await fetch(`${backendUrl}/api/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, email, password, phoneNumber }),
-    });
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Swal.fire({
+        title: "Email Tidak Valid",
+        text: "Silakan masukkan alamat email yang valid",
+        icon: "warning",
+        confirmButtonColor: "#FEBF00",
+      });
+      return;
+    }
 
-    const data = await response.text();
-    alert(data);
+    // Validate password match
+    if (password !== confirmPassword) {
+      Swal.fire({
+        title: "Password Tidak Cocok",
+        text: "Password dan konfirmasi password harus sama",
+        icon: "warning",
+        confirmButtonColor: "#FEBF00",
+      });
+      return;
+    }
+
+    // Validate phone number format (at least 10 digits)
+    if (!/^\d{10,}$/.test(phoneNumber.replace(/\D/g, ""))) {
+      Swal.fire({
+        title: "Nomor Telepon Tidak Valid",
+        text: "Silakan masukkan nomor telepon yang valid (minimal 10 digit)",
+        icon: "warning",
+        confirmButtonColor: "#FEBF00",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Show a toast notification
+      const Toast = Swal.mixin({
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+      });
+
+      Toast.fire({
+        icon: "info",
+        title: "Mengirim kode OTP ke email Anda...",
+      });
+
+      // Ganti dengan endpoint yang meminta OTP
+      const registerResponse = await fetch(
+        `${backendUrl}/api/auth/request-otp?email=${encodeURIComponent(email)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (!registerResponse.ok) {
+        const errorText = await registerResponse.text();
+        throw new Error(errorText || "Gagal mengirim OTP");
+      }
+
+      // Simpan data registrasi sementara
+      setRegistrationData({ username, email, password, phoneNumber });
+
+      // Improved animation sequence - fully fade out register form before showing OTP form
+      setShowFormRegisterAnimated(false);
+      setTimeout(() => {
+        setShowRegisterForm(false);
+        setShowOtpForm(true);
+        setTimeout(() => {
+          setShowOtpFormAnimated(true);
+          // Set timer OTP
+          setOtpTimer(120);
+          setIsResendDisabled(true);
+          // Clear OTP field for better UX
+          setOtp("");
+        }, 300);
+      }, 500); // Increased delay for smoother transition
+    } catch (error) {
+      console.error("Registration error:", error);
+      Swal.fire({
+        title: "Registrasi Gagal",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Terjadi kesalahan saat registrasi",
+        icon: "error",
+        confirmButtonColor: "#FEBF00",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp || otp.length < 6) {
+      Swal.fire({
+        title: "OTP Tidak Valid",
+        text: "Silakan masukkan kode OTP yang valid (6 digit)",
+        icon: "warning",
+        confirmButtonColor: "#FEBF00",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Show a progress indicator
+      const Toast = Swal.mixin({
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+      });
+
+      Toast.fire({
+        icon: "info",
+        title: "Memverifikasi OTP...",
+      });
+
+      // Send both OTP and registration data to complete registration
+      const verifyResponse = await fetch(`${backendUrl}/api/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: registrationData?.email,
+          otp: otp,
+          username: registrationData?.username,
+          password: registrationData?.password,
+          phoneNumber: registrationData?.phoneNumber,
+          role: "USER", // Default role
+        }),
+      });
+
+      if (!verifyResponse.ok) {
+        const errorText = await verifyResponse.text();
+        throw new Error(errorText || "Verifikasi OTP gagal");
+      }
+
+      const responseData = await verifyResponse.json();
+
+      // Go directly to login form after successful registration
+      setShowOtpFormAnimated(false);
+
+      setTimeout(() => {
+        setShowOtpForm(false);
+        // Clear registration data and OTP for security
+        setRegistrationData(null);
+        setOtp("");
+
+        // Show success message
+        Swal.fire({
+          title: "Registrasi Berhasil!",
+          text: "Akun Anda telah berhasil dibuat. Silakan login untuk melanjutkan.",
+          icon: "success",
+          confirmButtonColor: "#FEBF00",
+        });
+
+        // Then show login form
+        setShowLoginForm(true);
+        setTimeout(() => {
+          setShowFormLoginAnimated(true);
+          // Clear registration form fields
+          setUsername("");
+          setPassword("");
+          setEmail("");
+          setConfirmPassword("");
+          setPhoneNumber("");
+        }, 300);
+      }, 500);
+    } catch (error) {
+      console.error("OTP Verification error:", error);
+      Swal.fire({
+        title: "Verifikasi Gagal",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Terjadi kesalahan saat verifikasi OTP",
+        icon: "error",
+        confirmButtonColor: "#FEBF00",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (isResendDisabled) return;
+
+    setIsLoading(true);
+    try {
+      const resendResponse = await fetch(`${backendUrl}/api/auth/resend-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: registrationData?.email || "" }),
+      });
+
+      if (!resendResponse.ok) {
+        const errorText = await resendResponse.text();
+        throw new Error(errorText || "Gagal mengirim ulang OTP");
+      }
+
+      // Reset timer
+      setOtpTimer(120);
+      setIsResendDisabled(true);
+
+      Swal.fire({
+        title: "OTP Terkirim Ulang!",
+        text: "Kami telah mengirimkan kode OTP baru ke email Anda",
+        icon: "success",
+        confirmButtonColor: "#FEBF00",
+      });
+    } catch (error) {
+      console.error("Resend OTP error:", error);
+      Swal.fire({
+        title: "Gagal Mengirim Ulang",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Terjadi kesalahan saat mengirim ulang OTP",
+        icon: "error",
+        confirmButtonColor: "#FEBF00",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleShowRegister = () => {
@@ -215,6 +471,19 @@ const LoginScreen = ({
         setShowFormLoginAnimated(true);
       }, 300);
     }, 300);
+  };
+
+  // Improve back button handling from OTP to register
+  const handleBackFromOtp = () => {
+    setShowOtpFormAnimated(false);
+    setTimeout(() => {
+      setShowOtpForm(false);
+      setShowRegisterForm(true);
+      setTimeout(() => {
+        setShowFormRegisterAnimated(true);
+        // No need to clear registration data here
+      }, 300);
+    }, 500); // Increased delay for smoother transition
   };
 
   const handleKeyPressLogin = (e: React.KeyboardEvent) => {
@@ -525,6 +794,92 @@ const LoginScreen = ({
               >
                 Back
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OTP Form with Yellow Theme */}
+      {showOtpForm && (
+        <div
+          className={`absolute bottom-0 lg:bottom-10 text-center bg-white p-0 lg:p-0 rounded-t-3xl lg:rounded-3xl shadow-2xl transition-all duration-1000 ${
+            showOtpFormAnimated
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-20"
+          } w-full max-w-md lg:max-w-lg mx-4 lg:mx-0 overflow-hidden`}
+        >
+          <div className="space-y-4">
+            <div className="bg-white p-8 lg:p-10 rounded-t-3xl lg:rounded-3xl">
+              {/* Yellow accent bar at top */}
+              <div className="h-2 w-20 bg-[#FEBF00] rounded-full mx-auto mb-6"></div>
+
+              <h2 className="text-2xl lg:text-3xl font-bold mb-4 text-gray-800">
+                Verifikasi OTP
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Kode OTP telah dikirim ke{" "}
+                <span className="font-semibold text-[#FEBF00]">
+                  {registrationData?.email}
+                </span>
+              </p>
+
+              {/* OTP input with yellow accents */}
+              <div className="space-y-5">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Masukkan 6 digit kode OTP"
+                    className="w-full p-4 pl-5 text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50 text-center tracking-wider font-bold"
+                    value={otp}
+                    onChange={(e) =>
+                      setOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))
+                    }
+                    maxLength={6}
+                  />
+                  <div className="mt-3 text-sm text-gray-500">
+                    Kode berlaku selama {otpTimer > 0 ? otpTimer : 0} detik
+                  </div>
+                </div>
+              </div>
+
+              {/* Main action button with yellow theme */}
+              <button
+                className="mt-8 px-12 py-4 bg-[#FEBF00] text-white rounded-xl w-full font-bold transition-all duration-300 hover:bg-[#FEA700] hover:scale-105 active:scale-95 shadow-lg"
+                onClick={handleVerifyOtp}
+              >
+                Verifikasi & Daftar
+              </button>
+
+              <div className="mt-6 flex justify-between items-center">
+                <button
+                  className="px-6 py-3 bg-white text-black border-2 border-black rounded-xl transition-all duration-300 hover:bg-gray-50 hover:scale-105 active:scale-95"
+                  onClick={handleBackFromOtp}
+                >
+                  Kembali
+                </button>
+
+                <button
+                  className={`px-6 py-3 ${
+                    isResendDisabled
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      : "bg-[#FEBF00] text-white hover:bg-[#FEA700]"
+                  } rounded-xl transition-all duration-300 ${
+                    !isResendDisabled && "hover:scale-105 active:scale-95"
+                  }`}
+                  onClick={handleResendOtp}
+                  disabled={isResendDisabled}
+                >
+                  {isResendDisabled
+                    ? `Kirim ulang (${otpTimer}s)`
+                    : "Kirim ulang OTP"}
+                </button>
+              </div>
+
+              {/* Information text */}
+              <p className="mt-6 text-sm text-gray-500">
+                Tidak menerima kode? Periksa folder spam atau coba kirim ulang
+                setelah timer berakhir.
+              </p>
             </div>
           </div>
         </div>

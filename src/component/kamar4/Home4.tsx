@@ -14,6 +14,7 @@ import {
   Home,
   Bell,
   ChevronLeft,
+  LogOut,
 } from "lucide-react";
 import Notification from "../PeraturanKost";
 import { useNavigate } from "react-router-dom";
@@ -77,22 +78,52 @@ const Home4 = () => {
     }
   };
 
-  return (
-    <div className="w-full flex flex-col items-center bg-[#FFF8E7] min-h-screen pt-10">
-      {/* Header */}
-      <div className="w-full bg-gradient-to-r from-[#FFCC00] to-[#FF9900] p-6 shadow-lg rounded-b-[30px] relative">
-        {/* Back button */}
-        {activeContent !== "notification" && (
-          <button
-            onClick={() => setActiveContent("notification")}
-            className="absolute left-4 top-6 bg-white/20 p-2 rounded-full hover:bg-white/30 transition-colors"
-          >
-            <ChevronLeft className="text-white" size={24} />
-          </button>
-        )}
+  const MenuButton = ({
+    icon,
+    text,
+    isActive,
+    onClick,
+  }: {
+    icon: React.JSX.Element;
+    text: string;
+    isActive: boolean;
+    onClick: () => void;
+  }) => {
+    return (
+      <button
+        onClick={onClick}
+        className={`flex flex-col items-center justify-center ${
+          isActive
+            ? "bg-gradient-to-br from-[#FF7A00] to-[#FF9500] text-white shadow-lg"
+            : "bg-gradient-to-br from-[#FFCC00] to-[#FFDD33] text-gray-800 hover:from-[#FFDD33] hover:to-[#FFCC00]"
+        } rounded-xl p-4 shadow-md transition-all hover:shadow-lg w-full max-w-[150px] h-[150px] font-bold transform hover:scale-105 duration-200`}
+      >
+        <div
+          className={`w-10 h-10 flex items-center justify-center mb-2 ${
+            isActive ? "bg-white/20" : "bg-white/40"
+          } rounded-full p-2`}
+        >
+          {icon}
+        </div>
+        <span className="mt-1 text-sm text-center">{text}</span>
+      </button>
+    );
+  };
 
-        {/* Main content header */}
-        <div className="relative flex flex-col items-center mb-5">
+  return (
+    <div className="w-full flex flex-col items-center bg-[#FFF8E7] min-h-screen pt-16">
+      {/* Header */}
+      <div className="w-full text-center bg-gradient-to-br from-[#FFCC00] to-[#FF9500] p-6 shadow-lg rounded-b-[30px]">
+        {/* back button to notification */}
+        <button
+          onClick={() => setActiveContent("notification")}
+          className="absolute left-[35px] bg-white/20 hover:bg-white/30 p-2 rounded-full transition-colors"
+        >
+          <ChevronLeft className="text-white" size={24} />
+        </button>
+
+        {/* main content header */}
+        <div className="relative flex flex-col items-center mb-4">
           <div className="w-28 h-28 rounded-full overflow-hidden bg-white border-4 border-white shadow-lg">
             {profilePicture ? (
               <img
@@ -102,15 +133,15 @@ const Home4 = () => {
               />
             ) : (
               <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                <User size={48} className="text-gray-400" />
+                <User size={50} className="text-gray-300" />
               </div>
             )}
           </div>
           <button
             onClick={triggerInputClick}
-            className="absolute bottom-2 right-[calc(50%-60px)] bg-white p-2.5 rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+            className="absolute bottom-2 right-[-40px] bg-white p-2.5 rounded-full shadow-lg hover:bg-gray-100 transition-colors"
           >
-            <Camera size={18} className="text-[#FF9900]" />
+            <Camera size={18} className="text-[#FF7A00]" />
           </button>
           <input
             type="file"
@@ -120,22 +151,10 @@ const Home4 = () => {
             accept="image/*"
           />
         </div>
-        <h1 className="mt-3 text-white font-bold text-2xl text-center">
-          Selamat datang!
-        </h1>
-        <h2 className="mt-1 text-white font-medium text-lg text-center">
+        <h1 className="mt-4 text-white font-bold text-2xl">Selamat datang!</h1>
+        <h2 className="mt-1 text-white font-medium text-base bg-white/20 inline-block px-4 py-1 rounded-full">
           Kamar 4
         </h2>
-
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={() => navigate("/profile")}
-            className="bg-white/20 text-white py-2 px-4 rounded-full flex items-center hover:bg-white/30 transition-colors"
-          >
-            <User size={16} className="mr-1" />
-            <span>Lihat Profile</span>
-          </button>
-        </div>
       </div>
 
       {/* Tombol Menu */}
@@ -168,54 +187,26 @@ const Home4 = () => {
         </div>
         <button
           onClick={() => setActiveContent("notification")}
-          className="bg-gradient-to-r from-[#FFCC00] to-[#FF9900] text-white rounded-xl p-4 shadow-md hover:shadow-lg transition-all hover:scale-[1.02] font-bold w-full mt-6 flex items-center justify-center"
+          className="bg-[#FEBF00] border border-gray-300 text-white rounded-lg p-4 shadow-md hover:shadow-lg transition-transform hover:scale-105 font-bold w-full mt-6"
         >
-          <Bell className="mr-2" size={20} />
-          <span>Notifikasi & Pengumuman</span>
+          Notifikasi & Pengumuman
         </button>
       </div>
 
       {/* Area Konten Dinamis */}
-      <div className="w-full mt-8 p-6 bg-white rounded-xl shadow-md max-w-4xl min-h-[400px] mb-10 border border-[#FFE180]">
+      <div className="w-full mt-10 p-6 bg-white rounded-lg shadow-md max-w-4xl min-h-[400px] mb-10">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-800 border-b pb-3 mb-4">
+            {activeContent === "infoKamar" && "Info Kamar"}
+            {activeContent === "pembayaran" && "Pembayaran Sewa"}
+            {activeContent === "jadwalKebersihan" && "Jadwal Kebersihan"}
+            {activeContent === "faq" && "FAQ & Bantuan"}
+            {activeContent === "notification" && "Peraturan & Pengumuman"}
+          </h2>
+        </div>
         {renderContent()}
       </div>
     </div>
-  );
-};
-
-// Update MenuButton component for better visual design
-const MenuButton = ({
-  icon,
-  text,
-  isActive,
-  onClick,
-}: {
-  icon: React.JSX.Element;
-  text: string;
-  isActive: boolean;
-  onClick: () => void;
-}) => {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex flex-col items-center justify-center ${
-        isActive
-          ? "bg-gradient-to-r from-[#FFCC00] to-[#FF9900] text-white"
-          : "bg-white text-gray-700 border border-[#FFE180]"
-      } rounded-xl p-5 shadow-md transition-all hover:shadow-lg ${
-        isActive ? "scale-[1.05]" : "hover:scale-[1.03]"
-      } w-full max-w-[150px] h-[150px] font-bold`}
-    >
-      <div className={`w-10 h-10 flex items-center justify-center mb-2`}>
-        {React.cloneElement(
-          icon as React.ReactElement,
-          {
-            className: isActive ? "text-white" : "text-[#FF9900]",
-          } as React.HTMLAttributes<SVGElement> & { size?: number }
-        )}
-      </div>
-      <span className="text-center">{text}</span>
-    </button>
   );
 };
 
