@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Pencil, Trash, Plus, ArrowLeft } from "lucide-react";
 import Swal from "sweetalert2";
+import Commet from "./Commet";
 
 type Rule = {
   id: number;
@@ -14,9 +15,11 @@ const EditPeraturan: React.FC = () => {
   const [mode, setMode] = useState<"list" | "edit" | "create">("list");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   // Fetch rules from backend
   useEffect(() => {
+    setIsLoading(true);
     fetch("https://manage-kost-production.up.railway.app/api/peraturan")
       .then((res) => res.json())
       .then((data) =>
@@ -28,7 +31,8 @@ const EditPeraturan: React.FC = () => {
           }))
         )
       )
-      .catch((err) => console.error("Failed to fetch rules:", err));
+      .catch((err) => console.error("Failed to fetch rules:", err))
+      .finally(() => setIsLoading(false));
   }, []);
 
   const handleEdit = (rule: Rule) => {
@@ -147,6 +151,14 @@ const EditPeraturan: React.FC = () => {
     }
     setMode("list");
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Commet color="#32cd32" size="medium" text="" textColor="" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FB] px-4 py-6">

@@ -11,7 +11,8 @@ import {
   DollarSign,
 } from "lucide-react";
 import { JSX } from "react/jsx-runtime";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
+import Commet from "./Commet";
 
 const API_BASE_URL = "https://manage-kost-production.up.railway.app"; // production URL
 
@@ -58,8 +59,11 @@ export const refreshToken = async () => {
   try {
     const refreshToken = localStorage.getItem("refreshToken");
     if (!refreshToken) return false;
-    
-    const response = await axios.post(`${API_BASE_URL}/api/auth/refresh-token`, { refreshToken });
+
+    const response = await axios.post(
+      `${API_BASE_URL}/api/auth/refresh-token`,
+      { refreshToken }
+    );
     localStorage.setItem("token", response.data.token);
     return true;
   } catch (error) {
@@ -69,6 +73,11 @@ export const refreshToken = async () => {
     return false;
   }
 };
+
+// Add a new interface for the API response type
+interface ApiResponse<T> {
+  data: T[];
+}
 
 export default function KelolaPembayaran() {
   // State for storing data from backend with proper types
@@ -98,36 +107,38 @@ export default function KelolaPembayaran() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch rooms data
+        // 1. Fetch rooms data - ini sudah berfungsi
         const roomsResponse = await axios.get<KamarData[]>(
           `${API_BASE_URL}/api/kamar`
         );
         setRooms(roomsResponse.data);
 
-        // Fetch users data
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setError("Unauthorized access. Please log in.");
-          setLoading(false);
-          return;
+        // 2. Fetch users data - tanpa ketergantungan token
+        let usersResponse: AxiosResponse<UserData[]> | undefined;
+        try {
+          // Coba endpoint tanpa token
+          usersResponse = await axios.get(`${API_BASE_URL}/api/users`);
+        } catch (err) {
+          console.log("Endpoint baru gagal, mencoba endpoint lama");
+          // Jika gagal, coba endpoint lama
+          usersResponse = await axios.get(`${API_BASE_URL}/user`);
         }
 
-        const usersResponse = await axios.get(`${API_BASE_URL}/api/users`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        if (!usersResponse || !usersResponse.data) {
+          throw new Error("Failed to fetch user data");
+        }
+
         setUsers(usersResponse.data);
 
-        // Fetch profiles data
+        // 3. Fetch profiles data
         const profilesResponse = await axios.get<ProfileData[]>(
           `${API_BASE_URL}/api/profiles`
         );
         setProfiles(profilesResponse.data);
 
-        // Combine data to create payment list
+        // 4. Combine data to create payment list
         const combinedData: PaymentItem[] = roomsResponse.data.map((room) => {
-          const user: UserData | undefined = usersResponse.data.find(
+          const user = usersResponse?.data?.find(
             (u: UserData) => u.roomId === room.id
           );
 
@@ -145,20 +156,43 @@ export default function KelolaPembayaran() {
         setPembayaran(combinedData);
         setError(null);
       } catch (err) {
-       // Pesan error yang lebih informatif
-  if (axios.isAxiosError(err) && err.response) {
-    if (err.response.status === 403) {
-      setError("Akses ditolak. Pastikan Anda memiliki izin yang sesuai atau login kembali.");
-    } else if (err.response.status === 401) {
-      setError("Sesi login telah berakhir. Silakan login kembali.");
-      // Optional: redirect ke halaman login
-      // window.location.href = "/login";
-    } else {
-      setError(`Gagal memuat data: ${err.response.data?.message || err.message}`);
-    }
-  } else {
-    setError("Gagal memuat data. Silakan coba lagi nanti.");
-  }
+        console.error("Error fetching data:", err);
+
+        // 5. Tambahkan data dummy untuk fallback
+        const dummyPembayaran: PaymentItem[] = [
+          {
+            id: 1,
+            kamar: "Kamar 101",
+            penghuni: "Bambang S",
+            nominal: "Rp 1.500.000",
+            status: "Lunas",
+            roomId: 101,
+            userId: 1,
+          },
+          {
+            id: 2,
+            kamar: "Kamar 102",
+            penghuni: "Dewi K",
+            nominal: "Rp 1.200.000",
+            status: "Menunggu",
+            roomId: 102,
+            userId: 2,
+          },
+          {
+            id: 3,
+            kamar: "Kamar 103",
+            penghuni: "Rudi H",
+            nominal: "Rp 1.300.000",
+            status: "Belum Bayar",
+            roomId: 103,
+            userId: 3,
+          },
+        ];
+
+        setPembayaran(dummyPembayaran);
+        setError(
+          "Menggunakan data dummy karena gagal mengambil data dari server"
+        );
       } finally {
         setLoading(false);
       }
@@ -279,7 +313,7 @@ export default function KelolaPembayaran() {
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center">
-        Loading...
+        <Commet color="#32cd32" size="medium" text="" textColor="" />
       </div>
     );
   if (error)

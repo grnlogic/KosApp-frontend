@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import Swal from "sweetalert2";
+import BlinkBlur from "./BlinkBlur";
+import Commet from "./Commet";
 
 interface FAQItem {
   id: number;
@@ -20,6 +22,7 @@ interface FAQItem {
 
 const FAQ = () => {
   const [faqs, setFaqs] = useState<FAQItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -36,6 +39,7 @@ const FAQ = () => {
   }, []);
 
   const fetchFaqs = async () => {
+    setIsLoading(true);
     try {
       const response = await axios.get(
         "https://manage-kost-production.up.railway.app/api/faqs"
@@ -50,6 +54,8 @@ const FAQ = () => {
       updateLastModified();
     } catch (error) {
       console.error("Error fetching FAQs:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -192,93 +198,99 @@ const FAQ = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Frequently Asked Questions
-          </h1>
-          <p className="text-gray-500 mt-2">
-            Kelola pertanyaan umum untuk penghuni kos
-          </p>
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <Commet color="#32cd32" size="medium" text="" textColor="" />
         </div>
-
-        {/* Search & Add */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="relative flex-grow">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-              placeholder="Cari FAQ..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+      ) : (
+        <div className="max-w-5xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-gray-800">
+              Frequently Asked Questions
+            </h1>
+            <p className="text-gray-500 mt-2">
+              Kelola pertanyaan umum untuk penghuni kos
+            </p>
           </div>
-          <button
-            className="bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-600 hover:to-yellow-500 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center sm:justify-start"
-            onClick={handleAdd}
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Tambah FAQ
-          </button>
-        </div>
 
-        {/* FAQ Items */}
-        <div className="space-y-4">
-          {faqs.map((faq: FAQItem) => (
-            <div
-              key={faq.id}
-              className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-all"
+          {/* Search & Add */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="relative flex-grow">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                placeholder="Cari FAQ..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <button
+              className="bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-600 hover:to-yellow-500 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center sm:justify-start"
+              onClick={handleAdd}
             >
-              <div className="p-6">
-                <div className="flex justify-between items-start">
-                  <div className="flex">
-                    <div className="flex-shrink-0 mr-4">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-yellow-100">
-                        <HelpCircle className="h-6 w-6 text-yellow-500" />
+              <Plus className="h-5 w-5 mr-2" />
+              Tambah FAQ
+            </button>
+          </div>
+
+          {/* FAQ Items */}
+          <div className="space-y-4">
+            {faqs.map((faq: FAQItem) => (
+              <div
+                key={faq.id}
+                className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-all"
+              >
+                <div className="p-6">
+                  <div className="flex justify-between items-start">
+                    <div className="flex">
+                      <div className="flex-shrink-0 mr-4">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-yellow-100">
+                          <HelpCircle className="h-6 w-6 text-yellow-500" />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg text-gray-900">
+                          {faq.pertanyaan}
+                        </h3>
+                        <p className="text-gray-600 mt-2">{faq.jawaban}</p>
                       </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-lg text-gray-900">
-                        {faq.pertanyaan}
-                      </h3>
-                      <p className="text-gray-600 mt-2">{faq.jawaban}</p>
-                    </div>
-                  </div>
 
-                  <div className="flex space-x-2 ml-4">
-                    <button
-                      className="text-blue-500 hover:text-blue-700 transition-colors bg-blue-50 p-2 rounded-full"
-                      onClick={() => handleEdit(faq)}
-                    >
-                      <Pencil className="h-5 w-5" />
-                    </button>
-                    <button
-                      className="text-red-500 hover:text-red-700 transition-colors bg-red-50 p-2 rounded-full"
-                      onClick={() => handleDelete(faq)}
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
+                    <div className="flex space-x-2 ml-4">
+                      <button
+                        className="text-blue-500 hover:text-blue-700 transition-colors bg-blue-50 p-2 rounded-full"
+                        onClick={() => handleEdit(faq)}
+                      >
+                        <Pencil className="h-5 w-5" />
+                      </button>
+                      <button
+                        className="text-red-500 hover:text-red-700 transition-colors bg-red-50 p-2 rounded-full"
+                        onClick={() => handleDelete(faq)}
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        {/* Footer */}
-        <div className="mt-8 bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 px-6 py-4">
-          <div className="flex justify-between text-sm text-gray-500">
-            <div className="flex items-center">
-              <HelpCircle className="h-4 w-4 mr-2 text-yellow-500" />
-              Total FAQ: {faqs.length}
+          {/* Footer */}
+          <div className="mt-8 bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 px-6 py-4">
+            <div className="flex justify-between text-sm text-gray-500">
+              <div className="flex items-center">
+                <HelpCircle className="h-4 w-4 mr-2 text-yellow-500" />
+                Total FAQ: {faqs.length}
+              </div>
+              <div>Terakhir diperbarui: {lastUpdated}</div>
             </div>
-            <div>Terakhir diperbarui: {lastUpdated}</div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Edit Dialog */}
       {isEditDialogOpen && (

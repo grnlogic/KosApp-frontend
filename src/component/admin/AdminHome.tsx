@@ -29,6 +29,7 @@ import {
   ArcElement,
 } from "chart.js";
 import { Bar, Pie, Doughnut } from "react-chartjs-2";
+import Commet from "./Commet";
 
 // Register Chart.js components
 ChartJS.register(
@@ -400,7 +401,7 @@ const HomePanel: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
+        <Commet color="#32cd32" size="medium" text="" textColor="" />
       </div>
     );
   }

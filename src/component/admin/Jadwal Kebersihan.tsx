@@ -20,6 +20,8 @@ import {
 import WaktuPelaksanaan from "../../model/WaktuPelaksanaan";
 import Swal from "sweetalert2";
 import { JSX } from "react/jsx-runtime";
+import BlinkBlur from "./BlinkBlur";
+import Commet from "./Commet";
 
 // Change TimeOfDay to use the enum type
 type CleaningArea = "parkingArea" | "terrace" | "corridor" | "garden";
@@ -239,7 +241,11 @@ const JadwalKebersihan: React.FC = () => {
   };
 
   if (isLoading && kebersihanList.length === 0) {
-    return <div className="w-full flex justify-center p-8">Loading...</div>;
+    return (
+      <div className="w-full flex justify-center p-8">
+        <Commet color="#32cd32" size="medium" text="" textColor="" />
+      </div>
+    );
   }
 
   if (error && kebersihanList.length === 0) {

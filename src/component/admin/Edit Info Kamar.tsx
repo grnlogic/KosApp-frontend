@@ -5,6 +5,7 @@ import { ArrowLeft, Plus, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import Swal from "sweetalert2";
+import Commet from "./Commet";
 
 axios.defaults.baseURL = "https://manage-kost-production.up.railway.app"; // Updated backend base URL
 
@@ -30,9 +31,11 @@ export default function InfoKamar() {
   });
   const [facilityInput, setFacilityInput] = useState("");
   const [notification, setNotification] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchRooms = async () => {
+      setIsLoading(true);
       try {
         const response = await axios.get("/api/kamar");
         const mappedRooms = response.data.map((room: any) => ({
@@ -43,6 +46,8 @@ export default function InfoKamar() {
       } catch (error) {
         console.error("Failed to fetch rooms:", error);
         showNotification("Gagal terhubung ke database!");
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -256,102 +261,108 @@ export default function InfoKamar() {
         </div>
       )}
 
-      {/* Content */}
-      <div className="p-4 md:p-6">
-        <h2 className="text-xl md:text-2xl font-bold mb-4">
-          Daftar Info Kamar
-        </h2>
+      {isLoading ? (
+        <div className="flex justify-center items-center min-h-screen">
+          <Commet color="#32cd32" size="medium" text="" textColor="" />
+        </div>
+      ) : (
+        /* Content */
+        <div className="p-4 md:p-6">
+          <h2 className="text-xl md:text-2xl font-bold mb-4">
+            Daftar Info Kamar
+          </h2>
 
-        <div className="bg-white rounded-lg shadow-sm p-3 md:p-4 mb-6 overflow-x-auto">
-          {/* Desktop Table Header - Hidden on Mobile */}
-          <div className="hidden md:grid md:grid-cols-5 bg-gray-100 p-4 rounded-md mb-2">
-            <div className="font-semibold">Nomor Kamar</div>
-            <div className="font-semibold">Status</div>
-            <div className="font-semibold">Harga/Bulan</div>
-            <div className="font-semibold">Fasilitas</div>
-            <div className="font-semibold">Aksi</div>
+          <div className="bg-white rounded-lg shadow-sm p-3 md:p-4 mb-6 overflow-x-auto">
+            {/* Desktop Table Header - Hidden on Mobile */}
+            <div className="hidden md:grid md:grid-cols-5 bg-gray-100 p-4 rounded-md mb-2">
+              <div className="font-semibold">Nomor Kamar</div>
+              <div className="font-semibold">Status</div>
+              <div className="font-semibold">Harga/Bulan</div>
+              <div className="font-semibold">Fasilitas</div>
+              <div className="font-semibold">Aksi</div>
+            </div>
+
+            {/* Mobile and Desktop Table Content */}
+            {rooms.map((room) => (
+              <div key={room.id} className="border-b py-4">
+                {/* Mobile View - Card Layout */}
+                <div className="md:hidden grid grid-cols-1 gap-2">
+                  <div className="flex justify-between items-center">
+                    <div className="font-medium text-lg">{room.nomorKamar}</div>
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm ${getStatusColor(
+                        room.status
+                      )}`}
+                    >
+                      {room.status}
+                    </span>
+                  </div>
+                  <div className="text-gray-700">
+                    <span className="font-medium">Harga: </span>
+                    Rp {room.hargaBulanan.toLocaleString()}
+                  </div>
+                  <div className="text-gray-700">
+                    <span className="font-medium">Fasilitas: </span>
+                    {room.fasilitas.join(", ")}
+                  </div>
+                  <div className="flex space-x-3 mt-2">
+                    <button
+                      className="px-3 py-1 bg-blue-50 text-blue-500 rounded-md"
+                      onClick={() => openEditModal(room)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="px-3 py-1 bg-red-50 text-red-500 rounded-md"
+                      onClick={() => openDeleteModal(room)}
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                </div>
+
+                {/* Desktop View - Table Layout */}
+                <div className="hidden md:grid md:grid-cols-5 items-center">
+                  <div className="font-medium">{room.nomorKamar}</div>
+                  <div>
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm ${getStatusColor(
+                        room.status
+                      )}`}
+                    >
+                      {room.status}
+                    </span>
+                  </div>
+                  <div>Rp {room.hargaBulanan.toLocaleString()}</div>
+                  <div>{room.fasilitas.join(", ")}</div>
+                  <div className="space-y-1">
+                    <button
+                      className="block text-blue-500"
+                      onClick={() => openEditModal(room)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="block text-red-500"
+                      onClick={() => openDeleteModal(room)}
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Mobile and Desktop Table Content */}
-          {rooms.map((room) => (
-            <div key={room.id} className="border-b py-4">
-              {/* Mobile View - Card Layout */}
-              <div className="md:hidden grid grid-cols-1 gap-2">
-                <div className="flex justify-between items-center">
-                  <div className="font-medium text-lg">{room.nomorKamar}</div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm ${getStatusColor(
-                      room.status
-                    )}`}
-                  >
-                    {room.status}
-                  </span>
-                </div>
-                <div className="text-gray-700">
-                  <span className="font-medium">Harga: </span>
-                  Rp {room.hargaBulanan.toLocaleString()}
-                </div>
-                <div className="text-gray-700">
-                  <span className="font-medium">Fasilitas: </span>
-                  {room.fasilitas.join(", ")}
-                </div>
-                <div className="flex space-x-3 mt-2">
-                  <button
-                    className="px-3 py-1 bg-blue-50 text-blue-500 rounded-md"
-                    onClick={() => openEditModal(room)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="px-3 py-1 bg-red-50 text-red-500 rounded-md"
-                    onClick={() => openDeleteModal(room)}
-                  >
-                    Hapus
-                  </button>
-                </div>
-              </div>
-
-              {/* Desktop View - Table Layout */}
-              <div className="hidden md:grid md:grid-cols-5 items-center">
-                <div className="font-medium">{room.nomorKamar}</div>
-                <div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm ${getStatusColor(
-                      room.status
-                    )}`}
-                  >
-                    {room.status}
-                  </span>
-                </div>
-                <div>Rp {room.hargaBulanan.toLocaleString()}</div>
-                <div>{room.fasilitas.join(", ")}</div>
-                <div className="space-y-1">
-                  <button
-                    className="block text-blue-500"
-                    onClick={() => openEditModal(room)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="block text-red-500"
-                    onClick={() => openDeleteModal(room)}
-                  >
-                    Hapus
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+          {/* Add New Room Button */}
+          <button
+            className="bg-black text-white px-4 py-2 rounded-md flex items-center"
+            onClick={openAddModal}
+          >
+            <Plus className="w-4 h-4 mr-1" /> Tambah Kamar Baru
+          </button>
         </div>
-
-        {/* Add New Room Button */}
-        <button
-          className="bg-black text-white px-4 py-2 rounded-md flex items-center"
-          onClick={openAddModal}
-        >
-          <Plus className="w-4 h-4 mr-1" /> Tambah Kamar Baru
-        </button>
-      </div>
+      )}
 
       {/* Add Room Modal */}
       {modalType === "add" && (

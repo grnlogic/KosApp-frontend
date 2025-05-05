@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, Calendar, Clock, Edit, Save } from "lucide-react";
 import Swal from "sweetalert2";
+import BlinkBlur from "./BlinkBlur";
+import Commet from "./Commet";
 
 const EditPengumuman: React.FC = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [date, setDate] = useState("");
   const [pengumumanId, setPengumumanId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Fetch pengumuman data by ID
   useEffect(() => {
     const fetchPengumuman = async () => {
+      setLoading(true);
       try {
         const response = await fetch(
           `https://manage-kost-production.up.railway.app/api/pengumuman/1`
@@ -22,6 +26,8 @@ const EditPengumuman: React.FC = () => {
         setPengumumanId(data.id);
       } catch (error) {
         console.error("Error fetching pengumuman:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -82,6 +88,14 @@ const EditPengumuman: React.FC = () => {
     };
     return new Date(dateString).toLocaleDateString("id-ID", options);
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Commet color="#32cd32" size="medium" text="" textColor="" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto p-6">
