@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Analytics } from "@vercel/analytics/react"
+import { Analytics } from "@vercel/analytics/react";
 import { useEffect } from "react";
 import {
   BrowserRouter as Router,
@@ -14,7 +14,6 @@ import LoginScreen from "./component/LoginScreen";
 import PeraturanKost from "./component/PeraturanKost";
 import NotFound from "./component/NotFound";
 import LandingPage from "./component/Landingpage";
-
 
 // Halaman Penghuni 1
 import Profile1 from "./component/kamar1/profile1";
@@ -72,6 +71,8 @@ import EditAkunPenghuni from "./component/admin/AkunPenghuni";
 import DynamicProfile from "./DynamicProfile";
 import { Home as HomeIcon } from "lucide-react"; // Import the house icon from Lucid React
 import Cookies from "js-cookie"; // Import js-cookie
+import { API_BASE_URL } from "./data/Config";
+import axios from "axios";
 
 declare global {
   interface Window {
@@ -141,7 +142,6 @@ const Layout = ({
     return <Navigate to="/" replace />;
   }
 
-
   return (
     <>
       {/* Tampilkan Navbar hanya jika bukan di rute admin, LandingPage, atau halaman login */}
@@ -172,7 +172,7 @@ const Layout = ({
 
             {/* Rute penghuni 1 */}
             <Route path="/profile1" element={<Profile1 />} />
-            <Route path = "/pengumuman1" element={<Pengumuman1 />} />
+            <Route path="/pengumuman1" element={<Pengumuman1 />} />
             <Route path="/home1" element={<Home />} />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/infoKamar" element={<InfoKamar />} />
@@ -245,15 +245,37 @@ const AppWrapper = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [roomId, setRoomId] = useState<string>(""); // Tambahkan state roomId
 
-
   useEffect(() => {
-    const token = Cookies.get("authToken"); // Ambil token dari cookies
-    if (token) {
-      setIsLoggedIn(true); // Set login status
-      const isAdminToken = token ? JSON.parse(atob(token.split('.')[1])).isAdmin : false; // Replace with actual logic to check admin status
-      setIsAdmin(isAdminToken);
-      const roomIdFromToken = token ? JSON.parse(atob(token.split('.')[1])).roomId : ""; // Extract roomId from token or set default
-      setRoomId(roomIdFromToken);
+    // Periksa cookie non-HttpOnly sebagai indikator login
+    const isLoggedInCookie = Cookies.get("isLoggedIn") === "true";
+
+    if (isLoggedInCookie) {
+      setIsLoggedIn(true);
+
+      // Ambil data user dengan request ke API yang diproteksi
+      axios
+        .get(`${API_BASE_URL}/api/auth/user-info`, {
+          withCredentials: true,
+        })
+        .then((response) => {
+          const userData = response.data;
+          setIsAdmin(userData.role === "ADMIN");
+          setRoomId(userData.roomId || "");
+
+          if (!Cookies.get("isLoggedIn")) {
+            Cookies.set("isLoggedIn", "true", { 
+              expires: 7, 
+              path: "/",
+              sameSite: "Strict"
+            });
+          }
+        })
+        .catch((error) => {
+          // Jika request gagal, berarti sesi tidak valid
+          console.error("Sesi login tidak valid:", error);
+          setIsLoggedIn(false);
+          Cookies.remove("isLoggedIn", { path: "/" });
+        });
     }
   }, []);
 
@@ -286,7 +308,8 @@ const DropdownNavbar = ({
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    localStorage.removeItem("roomId");
+    Cookies.remove("authToken"); // Remove the token from cookies
+    Cookies.remove("refreshToken"); // Remove the roomId from cookies
     window.location.href = "/";
   };
 

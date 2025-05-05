@@ -45,159 +45,44 @@ export default function EditAkunPenghuni() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Get authentication token from localStorage
-  const getAuthToken = () => {
-    return localStorage.getItem("token");
-  };
-  //token status
-  const [tokenStatus, setTokenStatus] = useState({
-    exists: !!localStorage.getItem("token"),
-    value: localStorage.getItem("token")?.substring(0, 10) + "...",
-  });
-
-  // Create axios instance with auth headers
-  const getAuthHeader = () => {
-    const token = getAuthToken();
-    return {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : "",
-        "Content-Type": "application/json",
-      },
-    };
-  };
-
-  // Mengambil data pengguna dari backend
-  const fetchUsers = async () => {
-    setIsLoading(true);
-    try {
-      // 1. Cek token terlebih dahulu
-      const token = localStorage.getItem("token");
-      console.log("Token:", localStorage.getItem("token"));
-      if (!token) {
-        // Jika tidak ada token, gunakan data dummy saja
-        console.warn("Token tidak ditemukan. Menggunakan data dummy.");
-        const dummyUsers = [
-          {
-            id: 1,
-            username: "Bambang Suryanto",
-            email: "bambang.s@email.com",
-            phoneNumber: "+6281234567890",
-            roomId: 101,
-            role: "USER",
-          },
-          {
-            id: 2,
-            username: "Dewi Kusuma",
-            email: "dewi.k@email.com",
-            phoneNumber: "+6287654321098",
-            roomId: 201,
-            role: "USER",
-          },
-          {
-            id: 3,
-            username: "Rudi Hartono",
-            email: "rudi.h@email.com",
-            phoneNumber: "+6282198765432",
-            roomId: 102,
-            role: "USER",
-          },
-        ]; // data dummy Anda
-        setUsers(dummyUsers);
-        setIsLoading(false);
-        return;
-      }
-
-      // 2. Coba panggil API dengan cek endpoint alternatif
-      let response;
-      try {
-        // Coba endpoint pertama
-        response = await axios.get(`${API_URL}/api/users`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      } catch (err) {
-        // Jika gagal, coba endpoint kedua
-        console.log("Endpoint pertama gagal, mencoba endpoint alternatif");
-        response = await axios.get(`${API_URL}/user`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      }
-
-      // 3. Proses data jika berhasil
-      const sanitizedUsers = response.data.map((user: any) => ({
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        roomId: user.roomId,
-        role: user.role,
-      }));
-
-      setUsers(sanitizedUsers);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching users:", err);
-
-      // 4. Coba refresh token jika error 401
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
-        try {
-          const refreshToken = localStorage.getItem("refreshToken");
-          if (refreshToken) {
-            const response = await axios.post(
-              `${API_URL}/api/auth/refresh-token`,
-              { refreshToken }
-            );
-            localStorage.setItem("token", response.data.token);
-
-            // Coba fetch lagi setelah refresh token
-            fetchUsers();
-            return;
-          }
-        } catch (refreshErr) {
-          console.error("Gagal memperbaharui token:", refreshErr);
-        }
-      }
-
-      // 5. Tampilkan pesan error dan gunakan data dummy
-      setError(
-        "Tidak dapat mengambil data pengguna. Pastikan Anda sudah login."
-      );
-      // Data dummy untuk pengembangan/pengujian
-      const dummyUsers = [
-        {
-          id: 1,
-          username: "Bambang Suryanto",
-          email: "bambang.s@email.com",
-          phoneNumber: "+6281234567890",
-          roomId: 101,
-          role: "USER",
-        },
-        {
-          id: 2,
-          username: "Dewi Kusuma",
-          email: "dewi.k@email.com",
-          phoneNumber: "+6287654321098",
-          roomId: 201,
-          role: "USER",
-        },
-        {
-          id: 3,
-          username: "Rudi Hartono",
-          email: "rudi.h@email.com",
-          phoneNumber: "+6282198765432",
-          roomId: 102,
-          role: "USER",
-        },
-      ]; // data dummy Anda
-      setUsers(dummyUsers);
-    } finally {
-      setIsLoading(false);
+// Mengambil data pengguna dari backend
+const fetchUsers = async () => {
+  setIsLoading(true);
+  try {
+    // Panggil API untuk mendapatkan data pengguna
+    const response = await axios.get(`${API_URL}/api/users`);
+    
+    if (response.status === 200) {
+      setUsers(response.data);
+    } else {
+      throw new Error("Server responded with non-success status");
     }
-  };
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    
+    // Tampilkan error menggunakan SweetAlert
+    const axiosError = err as AxiosError<ErrorResponse>;
+    const errorMessage = 
+      axiosError.response?.data?.message || 
+      "Terjadi kesalahan saat mengambil data penghuni";
+    
+    setError(errorMessage);
+    
+    Swal.fire({
+      icon: "error",
+      title: "Gagal Mengambil Data",
+      text: errorMessage,
+      confirmButtonColor: "#000",
+    });
+    
+    // Inisialisasi users sebagai array kosong, bukan data dummy
+    setUsers([]);
+  } finally {
+    setIsLoading(false);
+  }
+};
+  // Mengambil data pengguna dari backend
+  // (Duplicate fetchUsers function removed)
 
   // Memuat data pengguna saat komponen terpasang
   useEffect(() => {
@@ -258,10 +143,9 @@ export default function EditAkunPenghuni() {
             },
           });
 
-          // Make a real API call to delete the user with auth header
+          // Make a real API call to delete the user without auth header
           const response = await axios.delete(
-            `${API_URL}/api/users/${user.id}`,
-            getAuthHeader()
+            `${API_URL}/api/users/${user.id}`
           );
 
           if (response.status === 200) {
@@ -326,7 +210,7 @@ export default function EditAkunPenghuni() {
         },
       });
 
-      // Make a real API call to the backend with auth header
+      // Make a real API call to the backend without auth header
       const response = await axios.put(
         `${API_URL}/api/users/${selectedUser.id}`,
         {
@@ -334,8 +218,7 @@ export default function EditAkunPenghuni() {
           email: selectedUser.email,
           phoneNumber: selectedUser.phoneNumber,
           roomId: selectedUser.roomId,
-        },
-        getAuthHeader()
+        }
       );
 
       // Update local state on successful response
@@ -420,11 +303,10 @@ export default function EditAkunPenghuni() {
         },
       });
 
-      // Make a real API call to reset the password with auth header
+      // Make a real API call to reset the password without auth header
       const response = await axios.put(
         `${API_URL}/users/${selectedUser.id}/reset-password`,
-        { newPassword },
-        getAuthHeader()
+        { newPassword }
       );
 
       // Check if response was successful
@@ -494,12 +376,6 @@ export default function EditAkunPenghuni() {
           />
         </div>
       </div>
-
-      {process.env.NODE_ENV === "development" && (
-        <div className="bg-gray-100 p-2 mb-4 text-xs">
-          Token: {tokenStatus.exists ? tokenStatus.value : "Tidak ada"}
-        </div>
-      )}
 
       {isLoading ? (
         <div className="flex justify-center items-center h-40">

@@ -6,6 +6,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; // Gunakan navigasi React Router
 import Cookies from "js-cookie"; // Import js-cookie
 import Swal from "sweetalert2"; // Tambahkan import Swal
+import { API_BASE_URL } from "../data/Config";
+import axios from "axios";
 
 interface LoginScreenProps {
   setIsLoggedIn: (value: boolean) => void;
@@ -57,6 +59,32 @@ const LoginScreen = ({
     password: string;
     phoneNumber: string;
   }
+
+  //implementasi cookie
+  const handleLoginWithAxios = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      await axios.post(
+        `${API_BASE_URL}/api/auth/login`,
+        {
+          username,
+          password,
+        },
+        {
+          withCredentials: true, // Pastikan untuk mengirim cookie
+        }
+      );
+
+      setIsLoggedIn(true);
+      navigate("/Beranda");
+    } catch (error) {
+      console.error(
+        "Login gagal. Periksa kembali username dan password:",
+        error
+      );
+    }
+  }; // Add this closing brace to properly close the handleLogin function
 
   const [registrationData, setRegistrationData] =
     useState<RegistrationData | null>(null);
@@ -110,100 +138,98 @@ const LoginScreen = ({
   };
 
   const [role, setRole] = useState(""); // Tambahkan state untuk role
+
   const handleLogin = async () => {
-    setIsLoading(true); // Mulai animasi loading
-    setError(""); // Reset error message
+    setIsLoading(true);
+    setError("");
 
     try {
-      // Simulasikan durasi animasi loading selama 2 detik
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      const response = await fetch(`${backendUrl}/api/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Origin: window.location.origin,
+      const response = await axios.post(
+        `${API_BASE_URL}/api/auth/login`,
+        {
+          username,
+          password,
         },
-        credentials: "include", // Include cookies in the request
-        mode: "cors", // Explicitly specify CORS mode
-        body: JSON.stringify({ username, password }),
+        {
+          withCredentials: true, // Penting untuk menerima cookies
+        }
+      );
+
+      // Pastikan cookie non-HTTP-only "isLoggedIn" disimpan dengan benar
+      Cookies.set("isLoggedIn", "true", {
+        expires: 7,
+        path: "/",
+        sameSite: "Strict",
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem("authToken", data.token); // Simpan token dengan kunci 'authToken'
-        setIsLoggedIn(true);
-        setRoomId(data.roomId); // Setel roomId dari respons backend
-        localStorage.setItem("roomId", data.roomId); // Simpan roomId di local storage
+      const data = response.data;
+      setIsLoggedIn(true);
 
-        if (data.role === "ADMIN") {
-          setIsAdmin(true);
-          navigate("/Beranda"); // Arahkan ke halaman admin
-        } else if (
-          data.role === "USER" &&
-          data.roomId &&
-          data.roomId !== "Belum memilih kamar"
-        ) {
-          setIsAdmin(false);
-          navigate(`/home${data.roomId}`); // Arahkan ke halaman user biasa
-        } else {
-          navigate("/Landingpage"); // Arahkan ke halaman Landingpage jika roomId tidak valid
-        }
+      // Set roomId if available
+      if (data.roomId) {
+        setRoomId(data.roomId);
+        // Save roomId to localStorage for persistent access
+        localStorage.setItem("roomId", data.roomId);
+      }
+
+      // Handle role-based navigation
+      if (data.role === "ADMIN") {
+        setIsAdmin(true);
+        // Show success notification for admin
+        Swal.fire({
+          title: "Login Berhasil!",
+          text: "Anda berhasil masuk sebagai Admin",
+          icon: "success",
+          confirmButtonColor: "#FEBF00",
+          timer: 2000,
+          timerProgressBar: true,
+        }).then(() => {
+          navigate("/Beranda"); // Admin goes to dashboard
+        });
       } else {
-        const errorText = await response.text();
-        console.error("Login failed:", errorText);
-
-        // Gunakan SweetAlert2 untuk menampilkan pesan kesalahan password
-        if (
-          response.status === 401 ||
-          errorText.toLowerCase().includes("password") ||
-          errorText.toLowerCase().includes("credentials")
-        ) {
+        // Regular user - check if they have a roomId
+        if (data.roomId) {
+          // Show success notification
           Swal.fire({
-            title: "Login Gagal",
-            text: "Username atau password yang Anda masukkan salah",
-            icon: "error",
-            confirmButtonText: "Coba Lagi",
+            title: "Login Berhasil!",
+            text: "Selamat datang kembali!",
+            icon: "success",
             confirmButtonColor: "#FEBF00",
-            showClass: {
-              popup: "animate__animated animate__fadeInDown",
-            },
-            hideClass: {
-              popup: "animate__animated animate__fadeOutUp",
-            },
+            timer: 2000,
+            timerProgressBar: true,
+          }).then(() => {
+            // Navigate to the appropriate room page based on roomId
+            if (data.roomId === "1") {
+              navigate("/Home"); // Kamar 1 uses /Home route
+            } else {
+              navigate(`/Home${data.roomId}`); // Other rooms use /Home2, /Home3, etc.
+            }
           });
         } else {
-          setError(`Login gagal: ${response.status} ${response.statusText}`);
+          // User doesn't have a room assigned yet - redirect to LandingPage explicitly
+          Swal.fire({
+            title: "Login Berhasil!",
+            text: "Selamat datang di MiminKost",
+            icon: "success",
+            confirmButtonColor: "#FEBF00",
+            timer: 2000,
+            timerProgressBar: true,
+          }).then(() => {
+            navigate("/LandingPage"); // Explicitly navigate to LandingPage component
+          });
         }
       }
     } catch (error) {
       console.error("Login error:", error);
-      setError(
-        "Terjadi kesalahan saat login. Kemungkinan masalah CORS. Silakan hubungi admin."
-      );
-
-      // Display more helpful error with SweetAlert2
+      setError("Username atau password salah");
       Swal.fire({
-        title: "Error Koneksi",
-        text: "Tidak dapat terhubung ke server. server sedang down.",
+        title: "Login Gagal",
+        text: "Username atau password salah",
         icon: "error",
-        confirmButtonText: "Coba Lagi",
-        showCancelButton: true,
-        cancelButtonText: "Hubungi Admin",
         confirmButtonColor: "#FEBF00",
-        cancelButtonColor: "#3085d6",
-      }).then((result) => {
-        if (result.isConfirmed) {
-          // User clicked "Try Again"
-          handleLogin();
-        } else if (result.dismiss === Swal.DismissReason.cancel) {
-          // User clicked "Contact Admin"
-          window.open("https://wa.me/0895352281010", "_blank");
-        }
       });
     } finally {
-      setIsLoading(false); // Hentikan animasi loading
+      setIsLoading(false);
     }
   };
 
@@ -502,9 +528,22 @@ const LoginScreen = ({
     setIsLoggedIn(false);
     setIsAdmin(false);
     setRoomId("");
-    localStorage.removeItem("token");
-    Cookies.remove("authToken"); // Hapus token dari cookies
-    navigate("/"); // Arahkan ke halaman login
+
+    // Hapus cookie isLoggedIn
+    Cookies.remove("isLoggedIn", { path: "/" });
+
+    // Hapus cookie auth dari server dengan API logout
+    axios
+      .post(
+        `${API_BASE_URL}/api/auth/logout`,
+        {},
+        {
+          withCredentials: true,
+        }
+      )
+      .finally(() => {
+        navigate("/");
+      });
   };
 
   return (

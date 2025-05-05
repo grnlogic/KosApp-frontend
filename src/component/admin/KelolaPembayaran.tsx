@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import jspdf, { jsPDF } from "jspdf";
 import {
   Check,
   Clock,
@@ -9,6 +10,7 @@ import {
   Trash2,
   CreditCard,
   DollarSign,
+  Download,
 } from "lucide-react";
 import { JSX } from "react/jsx-runtime";
 import axios, { AxiosResponse } from "axios";
@@ -78,6 +80,140 @@ export const refreshToken = async () => {
 interface ApiResponse<T> {
   data: T[];
 }
+
+// Function to handle PDF download and pdf content generation
+const handleDownloadPDF = (item: PaymentItem) => {
+  // Buat instance PDF baru
+  const doc = new jsPDF();
+  
+  // Tambahkan margin
+  const margin = 20;
+  let y = margin;
+  
+  // Header Invoice
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.text("INVOICE", margin, y);
+  
+  // Logo/Nama Perusahaan
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "normal");
+  doc.text("KOSAPP", 160, y);
+  doc.setFontSize(8);
+  doc.text("Manajemen Kos Terpercaya", 160, y + 5);
+  
+  // Garis pembatas header
+  y += 15;
+  doc.setLineWidth(0.5);
+  doc.line(margin, y, 190, y);
+  y += 10;
+  
+  // Informasi Kepada
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("KEPADA :", margin, y);
+  
+  // Informasi Tanggal
+  doc.text("TANGGAL :", 130, y);
+  y += 5;
+  
+  // Data Penerima
+  doc.setFont("helvetica", "normal");
+  doc.text(item.penghuni, margin, y);
+  
+  // Data Tanggal
+  const today = new Date();
+  const formattedDate = today.toLocaleDateString("id-ID", {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+  doc.text(formattedDate, 130, y);
+  y += 5;
+  
+  // Email (jika tersedia)
+  doc.text("penghuni@kosapp.com", margin, y);
+  
+  // Nomor Invoice
+  doc.setFont("helvetica", "bold");
+  doc.text("NO INVOICE :", 130, y);
+  y += 5;
+  doc.setFont("helvetica", "normal");
+  doc.text(`KOS-${item.id}-${today.getFullYear()}${(today.getMonth()+1).toString().padStart(2, '0')}`, 130, y);
+  
+  // Tabel Header
+  y += 15;
+  doc.setFont("helvetica", "bold");
+  doc.rect(margin, y, 170, 10);
+  doc.setFillColor(240, 240, 240);
+  doc.rect(margin, y, 170, 10, 'F');
+  
+  doc.text("KETERANGAN", margin + 5, y + 7);
+  doc.text("HARGA", 90, y + 7);
+  doc.text("JML", 140, y + 7);
+  doc.text("TOTAL", 170, y + 7);
+  y += 10;
+  
+  // Item Pembayaran
+  doc.setFont("helvetica", "normal");
+  doc.rect(margin, y, 170, 10);
+  doc.text(`Sewa Kamar ${item.kamar}`, margin + 5, y + 7);
+  
+  // Extract numeric value from nominal string (removing "Rp " and thousand separators)
+  const numericValue = item.nominal.replace(/[^\d]/g, "");
+  const hargaSewa = parseInt(numericValue);
+  
+  doc.text(item.nominal, 90, y + 7);
+  doc.text("1", 140, y + 7);
+  doc.text(item.nominal, 170, y + 7);
+  y += 10;
+  
+  // Garis untuk pembayaran
+  y += 10;
+  doc.setFont("helvetica", "bold");
+  doc.text("PEMBAYARAN :", margin, y);
+  y += 5;
+  
+  // Detail Pembayaran
+  doc.setFont("helvetica", "normal");
+  doc.text(`Nama : KosApp`, margin, y);
+  doc.text("SUB TOTAL :", 130, y);
+  doc.text(item.nominal, 170, y);
+  y += 5;
+  
+  doc.text(`No. Rek : 1234-567-890`, margin, y);
+  
+  // Pajak (10% asumsi)
+  const pajak = Math.round(hargaSewa * 0.1);
+  doc.text("PAJAK :", 130, y);
+  doc.text(`Rp ${pajak.toLocaleString("id-ID")}`, 170, y);
+  y += 5;
+  
+  // Total
+  doc.setLineWidth(0.2);
+  doc.line(130, y, 190, y);
+  y += 5;
+  doc.setFont("helvetica", "bold");
+  doc.text("TOTAL :", 130, y);
+  const totalBayar = hargaSewa + pajak;
+  doc.text(`Rp ${totalBayar.toLocaleString("id-ID")}`, 170, y);
+  
+  // Terima kasih
+  y += 20;
+  doc.setFont("helvetica", "bold");
+  doc.text("TERIMAKASIH ATAS", margin, y);
+  y += 5;
+  doc.text("PEMBAYARAN ANDA", margin, y);
+  
+  // Tanda tangan
+  doc.text("Admin KosApp", 150, y);
+  doc.setLineWidth(0.5);
+  doc.line(140, y + 10, 180, y + 10);
+  
+  // Download PDF dengan nama yang sesuai
+  doc.save(`Invoice_Kamar_${item.kamar}.pdf`);
+};
 
 export default function KelolaPembayaran() {
   // State for storing data from backend with proper types
@@ -459,15 +595,25 @@ export default function KelolaPembayaran() {
                         <button
                           onClick={() => handleEdit(item.id)}
                           className="text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Edit"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
+                          onClick={() => handleDownloadPDF(item)}
+                          className="text-green-600 hover:text-green-800 transition-colors"
+                          title="Download Invoice"
+                        >
+                          <Download className="h-4 w-4" />
+                        </button>
+                        <button
                           onClick={() => handleDelete(item.id)}
                           className="text-red-600 hover:text-red-800 transition-colors"
+                          title="Hapus"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
+                       
                       </div>
                     </td>
                   </tr>
