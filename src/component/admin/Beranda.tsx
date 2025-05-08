@@ -21,7 +21,7 @@ import AkunPenghuni from "./AkunPenghuni";
 import AdminHome from "./AdminHome";
 
 const Beranda = () => {
-  const [activeMenu, setActiveMenu] = useState("kamar");
+  const [activeMenu, setActiveMenu] = useState("home");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const welcomeText = "ADMIN PORTAL";

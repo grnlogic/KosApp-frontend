@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Star } from "lucide-react";
 
 interface TentangKosAppProps {
@@ -7,6 +7,20 @@ interface TentangKosAppProps {
 
 const TentangKosApp: React.FC<TentangKosAppProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState("Tentang");
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure proper mounting and prevent duplicate rendering
+  useEffect(() => {
+    setMounted(true);
+
+    // Prevent body scrolling when modal is open
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      // Re-enable body scrolling when modal is closed
+      document.body.style.overflow = "unset";
+    };
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -185,13 +199,32 @@ const TentangKosApp: React.FC<TentangKosAppProps> = ({ onClose }) => {
     }
   };
 
+  // Don't render anything until mounted to prevent duplication
+  if (!mounted) return null;
+
+  // Handle close with cleanup
+  const handleClose = () => {
+    setMounted(false);
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-lg p-6 w-11/12 max-w-lg h-5/6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
+    <div
+      className="fixed inset-0 flex items-center justify-center z-[100]"
+      id="tentang-kosapp-modal"
+    >
+      {/* Dark overlay behind modal */}
+      <div
+        className="absolute inset-0 bg-black bg-opacity-70 backdrop-blur-sm"
+        onClick={handleClose}
+      ></div>
+
+      {/* Modal content */}
+      <div className="bg-white rounded-lg shadow-lg p-6 w-11/12 max-w-lg max-h-[80vh] overflow-y-auto relative z-10 my-4">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Kos-App</h1>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-500 hover:text-black font-bold"
           >
             ✕
@@ -214,7 +247,7 @@ const TentangKosApp: React.FC<TentangKosAppProps> = ({ onClose }) => {
         </div>
         <div>{renderContent()}</div>
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="mt-4 px-4 py-2 bg-black text-white rounded-lg font-bold"
         >
           Tutup
