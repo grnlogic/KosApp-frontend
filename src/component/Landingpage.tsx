@@ -28,7 +28,6 @@ import { owner } from "./App/Api/owner";
 import { fitur as fiturData } from "./App/Api/fitur";
 import TentangKosApp from "./TentangKosApp";
 import DetailRoom from "./DetailRoom";
-import Particles from "react-tsparticles";
 import axios from "axios"; // Import axios for API calls
 
 // Import the room image that will be used for all cards
@@ -311,63 +310,19 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-yellow-50 to-white">
-      {/* Simplified Particle Background for better performance */}
-      {!isMobile ? (
-        <Particles
-          className="absolute inset-0 z-0"
-          options={{
-            particles: {
-              number: {
-                value: 20,
-                density: { enable: true, value_area: 1200 },
-              }, // Reduced particle count
-              size: { value: 3, random: true },
-              opacity: { value: 0.4, random: true },
-              move: {
-                speed: 0.8, // Reduced speed
-                direction: "none",
-                random: true,
-                out_mode: "out",
-                bounce: false,
-              },
-              color: { value: "#FFD700" }, // Simplified to single color
-              line_linked: {
-                enable: true,
-                color: "#FFD700",
-                opacity: 0.2,
-                width: 1,
-                shadow: { enable: false }, // Removed shadows
-              },
-              shape: {
-                type: "circle", // Simplified shape
-              },
-            },
-            interactivity: {
-              detect_on: "canvas",
-              events: {
-                onhover: { enable: false }, // Disabled hover interactions
-                onclick: { enable: false }, // Disabled click interactions
-                resize: true,
-              },
-            },
-            retina_detect: false, // Disabled retina detection for performance
+      {/* Static background pattern - replacing particles for all devices */}
+      <div className="absolute inset-0 z-0 bg-gradient-to-br from-yellow-50 to-white opacity-50">
+        <div
+          className="absolute inset-0 z-0 bg-repeat opacity-10"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FFD700' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+            backgroundSize: "60px 60px",
           }}
-        />
-      ) : (
-        // Static background pattern for mobile - much better performance
-        <div className="absolute inset-0 z-0 bg-gradient-to-br from-yellow-50 to-white opacity-50">
-          <div
-            className="absolute inset-0 z-0 bg-repeat opacity-10"
-            style={{
-              backgroundImage:
-                "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FFD700' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
-              backgroundSize: "60px 60px",
-            }}
-          ></div>
-        </div>
-      )}
+        ></div>
+      </div>
 
-      {/* Simplified Abstract Background Elements - conditionally render based on device */}
+      {/* Simplified Abstract Background Elements */}
       {!isMobile && (
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           {/* Reduced number of abstract elements */}
