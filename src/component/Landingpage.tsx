@@ -47,70 +47,149 @@ interface Card {
   price: number; // Add price
 }
 
+// Add fallback data in case the API fails - this ensures content always appears
+const fallbackRooms = [
+  {
+    id: "fallback-1",
+    nomorKamar: "101",
+    status: "kosong",
+    hargaBulanan: 850000,
+    fasilitas: "AC, WiFi, Kamar Mandi Dalam, Lemari, Meja, Kursi",
+    title: "Kamar 101",
+    description: "Kamar nyaman dengan fasilitas lengkap",
+    price: 850000,
+  },
+  {
+    id: "fallback-2",
+    nomorKamar: "102",
+    status: "kosong",
+    hargaBulanan: 950000,
+    fasilitas: "AC, WiFi, Kamar Mandi Dalam, Lemari, Meja, Kursi, TV",
+    title: "Kamar 102",
+    description: "Kamar premium dengan TV",
+    price: 950000,
+  },
+  {
+    id: "fallback-3",
+    nomorKamar: "103",
+    status: "terisi",
+    hargaBulanan: 800000,
+    fasilitas: "WiFi, Kamar Mandi Dalam, Lemari, Meja",
+    title: "Kamar 103",
+    description: "Kamar standar yang nyaman",
+    price: 800000,
+  },
+];
+
 //card list
 const CardList = () => {
-  const [cards, setCards] = useState<Card[]>([]); // Define the type for cards
-  const [selectedCard, setSelectedCard] = useState<Card | null>(null); // Define the type for selectedCard
+  const [cards, setCards] = useState<Card[]>([]);
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [visibleCards, setVisibleCards] = useState<number>(6); // Limit initial render
+  const [visibleCards, setVisibleCards] = useState<number>(6);
+  const [apiTimeoutReached, setApiTimeoutReached] = useState(false);
+  const [usingFallbackData, setUsingFallbackData] = useState(false);
 
+  // Improved mobile detection with additional handler for network conditions
   useEffect(() => {
-    // Detect mobile
-    setIsMobile(
-      window.innerWidth < 768 ||
+    const checkMobile = () => {
+      const isMobileDevice =
+        window.innerWidth < 768 ||
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
           navigator.userAgent
-        )
-    );
+        );
+      setIsMobile(isMobileDevice);
 
-    // Fetch room data with optimized approach
+      // Set a shorter timeout for mobile devices
+      return isMobileDevice;
+    };
+
+    const isMobileDevice = checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    // More robust API fetching with better error handling for mobile
     const fetchRooms = async () => {
       setIsLoading(true);
       setError(null);
 
+      // Set a shorter timeout for mobile devices
+      const timeoutDuration = isMobileDevice ? 5000 : 10000;
+
       try {
-        // Set a timeout to handle slow connections
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout fetching rooms")), 10000)
-        );
+        // Create a timeout promise
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            setApiTimeoutReached(true);
+            reject(new Error("Waktu habis saat memuat data kamar"));
+          }, timeoutDuration);
+        });
 
-        // Actual API request
-        const fetchPromise = axios.get(
-          "https://manage-kost-production.up.railway.app/api/kamar"
-        );
+        // Define the actual fetch function
+        const fetchData = async () => {
+          try {
+            const response = await axios.get(
+              "https://manage-kost-production.up.railway.app/api/kamar"
+            );
 
-        // Race between timeout and fetch
-        const response = (await Promise.race([
-          fetchPromise,
-          timeoutPromise,
-        ])) as any;
+            if (response.data && Array.isArray(response.data)) {
+              return response.data;
+            } else {
+              throw new Error("Format data tidak valid");
+            }
+          } catch (err) {
+            console.error("API Error:", err);
+            throw new Error("Gagal memuat data dari server");
+          }
+        };
 
-        // Process data minimally for first render
-        const processedCards = response.data.map((item: Card) => ({
-          id: item.id,
-          nomorKamar: item.nomorKamar,
-          status: item.status,
-          hargaBulanan: item.hargaBulanan,
-          fasilitas: item.fasilitas?.substring(0, 100) || "", // Limit text length initially
-          // Default values for optional fields
-          title: item.title || `Kamar ${item.nomorKamar}`,
-          description:
-            item.description || item.fasilitas?.substring(0, 100) || "",
-          price: item.price || item.hargaBulanan,
+        // Race between timeout and data fetching
+        const data = await Promise.race([fetchData(), timeoutPromise]);
+
+        // Process received data
+        const processedCards = data.map((item: any) => ({
+          id:
+            item.id ||
+            `kamar-${
+              item.nomorKamar || Math.random().toString(36).substring(7)
+            }`,
+          nomorKamar: item.nomorKamar || "???",
+          status: item.status || "kosong",
+          hargaBulanan: item.hargaBulanan || 0,
+          fasilitas: (item.fasilitas || "").substring(0, 100),
+          title: item.title || `Kamar ${item.nomorKamar || ""}`,
+          description: item.description || item.fasilitas || "",
+          price: item.price || item.hargaBulanan || 0,
         }));
 
         setCards(processedCards);
+        setUsingFallbackData(false);
         setIsLoading(false);
       } catch (err) {
-        console.error("Error fetching room data:", err);
-        setError("Gagal memuat data kamar, silakan coba lagi.");
+        console.error("Error loading rooms:", err);
+
+        // On error, use fallback data to ensure content always appears
+        setCards(fallbackRooms);
+        setUsingFallbackData(true);
         setIsLoading(false);
+
+        if (apiTimeoutReached) {
+          setError("Koneksi lambat terdeteksi. Menampilkan contoh kamar.");
+        } else {
+          setError("Gagal memuat data kamar. Menampilkan contoh kamar.");
+        }
       }
     };
 
-    fetchRooms();
+    // Add a small delay before fetching on mobile to let the UI render first
+    if (isMobileDevice) {
+      setTimeout(fetchRooms, 300);
+    } else {
+      fetchRooms();
+    }
+
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Load more cards function
@@ -118,12 +197,15 @@ const CardList = () => {
     setVisibleCards((prevCount) => prevCount + 6);
   };
 
-  // Better loading state with skeleton cards
+  // Better loading state with skeleton cards - now more visible
   if (isLoading) {
     return (
       <div className="p-6">
+        <div className="mb-4 text-center text-sm text-gray-500">
+          Memuat data kamar...
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {[...Array(3)].map((_, index) => (
+          {[...Array(isMobile ? 2 : 3)].map((_, index) => (
             <div
               key={index}
               className="bg-white rounded-xl shadow-lg overflow-hidden border border-yellow-100 animate-pulse"
@@ -145,19 +227,24 @@ const CardList = () => {
     );
   }
 
-  // Error state
+  // Error state - now shows fallback data instead of just an error message
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          <p>{error}</p>
+      <div>
+        <div className="mb-4 px-6 py-2 bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm rounded-lg">
+          {error}
         </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors"
-        >
-          Muat Ulang
-        </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 p-6">
+          {fallbackRooms.map((item, index) => (
+            <RoomCard
+              key={item.id}
+              item={item}
+              index={index}
+              isMobile={isMobile}
+              onSelect={() => setSelectedCard(item)}
+            />
+          ))}
+        </div>
       </div>
     );
   }
@@ -178,64 +265,21 @@ const CardList = () => {
 
   return (
     <div className="p-6">
+      {usingFallbackData && (
+        <div className="mb-4 px-4 py-2 bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-lg">
+          Menampilkan contoh kamar karena koneksi internet lambat
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {displayedCards.map((item, index) => (
-          <motion.div
+          <RoomCard
             key={item.id}
-            className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl hover:scale-105 border border-yellow-100"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3, delay: index * 0.05 }}
-            layoutId={`card-${item.id}`}
-          >
-            <div className="relative">
-              {/* Use a lightweight image placeholder initially */}
-              <div className="w-full h-56 bg-gray-100 relative">
-                <img
-                  src={roomImage}
-                  alt={`Kamar ${item.nomorKamar}`}
-                  className={`w-full h-full object-cover transition-all ${
-                    item.status !== "kosong" ? "blur-[4px]" : ""
-                  }`}
-                  loading="lazy" // Use lazy loading for images
-                />
-              </div>
-              <div className="absolute top-3 right-3">
-                <span
-                  className={`text-xs font-bold px-3 py-1 rounded-full ${
-                    item.status === "kosong"
-                      ? "bg-green-500 text-white"
-                      : "bg-red-500 text-white"
-                  }`}
-                >
-                  {item.status === "kosong" ? "Tersedia" : "Tidak Tersedia"}
-                </span>
-              </div>
-            </div>
-            <div className="p-5">
-              <h1 className="text-xl font-bold text-gray-800 mb-1">
-                Kamar {item.nomorKamar}
-              </h1>
-              {/* Limit text length for better performance */}
-              <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-                {item.fasilitas}
-              </p>
-              <div className="flex justify-between items-center mt-4">
-                <p className="text-xl font-bold text-yellow-600">
-                  Rp {item.hargaBulanan.toLocaleString("id-ID")}
-                  <span className="text-xs text-gray-500 font-normal">
-                    /bulan
-                  </span>
-                </p>
-                <button
-                  onClick={() => setSelectedCard(item)}
-                  className="flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-yellow-700 bg-yellow-100 hover:bg-yellow-600 hover:text-white transition duration-300"
-                >
-                  Detail <ArrowRight size={16} />
-                </button>
-              </div>
-            </div>
-          </motion.div>
+            item={item}
+            index={index}
+            isMobile={isMobile}
+            onSelect={() => setSelectedCard(item)}
+          />
         ))}
       </div>
 
@@ -256,12 +300,79 @@ const CardList = () => {
         <DetailRoom
           card={{
             ...selectedCard,
-            image: roomImage, // Use the imported image for detail view
+            image: roomImage,
           }}
           onClose={() => setSelectedCard(null)}
         />
       )}
     </div>
+  );
+};
+
+// Extract the card rendering to a separate component for better performance
+const RoomCard = ({
+  item,
+  index,
+  isMobile,
+  onSelect,
+}: {
+  item: Card;
+  index: number;
+  isMobile: boolean;
+  onSelect: () => void;
+}) => {
+  return (
+    <motion.div
+      key={item.id}
+      className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl hover:scale-105 border border-yellow-100"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, delay: isMobile ? 0 : index * 0.05 }}
+    >
+      <div className="relative">
+        <div className="w-full h-56 bg-gray-100 relative">
+          <img
+            src={roomImage}
+            alt={`Kamar ${item.nomorKamar}`}
+            className={`w-full h-full object-cover transition-all ${
+              item.status !== "kosong" ? "blur-[4px]" : ""
+            }`}
+            loading="lazy"
+          />
+        </div>
+        <div className="absolute top-3 right-3">
+          <span
+            className={`text-xs font-bold px-3 py-1 rounded-full ${
+              item.status === "kosong"
+                ? "bg-green-500 text-white"
+                : "bg-red-500 text-white"
+            }`}
+          >
+            {item.status === "kosong" ? "Tersedia" : "Tidak Tersedia"}
+          </span>
+        </div>
+      </div>
+      <div className="p-5">
+        <h1 className="text-xl font-bold text-gray-800 mb-1">
+          Kamar {item.nomorKamar}
+        </h1>
+        <p className="text-sm text-gray-500 mb-3 line-clamp-2">
+          {item.fasilitas}
+        </p>
+        <div className="flex justify-between items-center mt-4">
+          <p className="text-xl font-bold text-yellow-600">
+            Rp {item.hargaBulanan.toLocaleString("id-ID")}
+            <span className="text-xs text-gray-500 font-normal">/bulan</span>
+          </p>
+          <button
+            onClick={onSelect}
+            className="flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-yellow-700 bg-yellow-100 hover:bg-yellow-600 hover:text-white transition duration-300"
+          >
+            Detail <ArrowRight size={16} />
+          </button>
+        </div>
+      </div>
+    </motion.div>
   );
 };
 
