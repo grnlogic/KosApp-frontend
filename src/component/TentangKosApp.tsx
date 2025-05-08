@@ -8,10 +8,19 @@ interface TentangKosAppProps {
 const TentangKosApp: React.FC<TentangKosAppProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState("Tentang");
   const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Ensure proper mounting and prevent duplicate rendering
   useEffect(() => {
     setMounted(true);
+
+    // Detect mobile device
+    setIsMobile(
+      window.innerWidth < 768 ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        )
+    );
 
     // Prevent body scrolling when modal is open
     document.body.style.overflow = "hidden";
@@ -213,14 +222,14 @@ const TentangKosApp: React.FC<TentangKosAppProps> = ({ onClose }) => {
       className="fixed inset-0 flex items-center justify-center z-[100]"
       id="tentang-kosapp-modal"
     >
-      {/* Dark overlay behind modal */}
+      {/* Dark overlay behind modal - simplified */}
       <div
-        className="absolute inset-0 bg-black bg-opacity-70 backdrop-blur-sm"
+        className="absolute inset-0 bg-black bg-opacity-70"
         onClick={handleClose}
       ></div>
 
-      {/* Modal content */}
-      <div className="bg-white rounded-lg shadow-lg p-6 w-11/12 max-w-lg max-h-[80vh] overflow-y-auto relative z-10 my-4">
+      {/* Modal content - simplified shadow and animation */}
+      <div className="bg-white rounded-lg shadow-md p-6 w-11/12 max-w-lg max-h-[80vh] overflow-y-auto relative z-10 my-4">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Kos-App</h1>
           <button

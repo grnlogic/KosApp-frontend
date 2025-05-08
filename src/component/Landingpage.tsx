@@ -52,21 +52,45 @@ interface Card {
 const CardList = () => {
   const [cards, setCards] = useState<Card[]>([]); // Define the type for cards
   const [selectedCard, setSelectedCard] = useState<Card | null>(null); // Define the type for selectedCard
+  const [isMobile, setIsMobile] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch room data from the backend
+    // Detect mobile
+    setIsMobile(
+      window.innerWidth < 768 ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        )
+    );
+
+    // Fetch room data from the backend with loading state
+    setIsLoading(true);
     axios
       .get("https://manage-kost-production.up.railway.app/api/kamar")
-      .then((response) =>
+      .then((response) => {
         setCards(
           response.data.map((item: Card) => ({
             ...item,
             // We'll override the image in the rendering
           }))
-        )
-      )
-      .catch((error) => console.error("Error fetching room data:", error));
+        );
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error fetching room data:", error);
+        setIsLoading(false);
+      });
   }, []);
+
+  // If loading, show a simple loading indicator
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -75,9 +99,9 @@ const CardList = () => {
           <motion.div
             key={item.id}
             className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105 border border-yellow-100"
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
+            initial={!isMobile ? { opacity: 0, y: 50 } : { opacity: 1 }}
+            whileInView={!isMobile ? { opacity: 1, y: 0 } : {}}
+            transition={!isMobile ? { duration: 0.5, delay: index * 0.1 } : {}}
             viewport={{ once: true }}
           >
             <div className="relative">
@@ -233,6 +257,25 @@ const LandingPage: React.FC = () => {
   // Create a computed state to track if any popup is open
   const isAnyPopupOpen = showTentangKosApp || showComingSoon;
 
+  // Detect mobile devices
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    // Simple mobile detection
+    const checkMobile = () => {
+      setIsMobile(
+        window.innerWidth < 768 ||
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+            navigator.userAgent
+          )
+      );
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   useEffect(() => {
     const typingInterval = setInterval(() => {
       setCurrentWordIndex((prevIndex) => {
@@ -268,64 +311,98 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-yellow-50 to-white">
-      {/* Enhanced Particle Background */}
-      <Particles
-        className="absolute inset-0 z-0"
-        options={{
-          particles: {
-            number: { value: 40, density: { enable: true, value_area: 1200 } },
-            size: {
-              value: 4,
-              random: true,
-              anim: { enable: true, speed: 2, size_min: 1, sync: false },
-            },
-            opacity: {
-              value: 0.5,
-              random: true,
-              anim: { enable: true, speed: 0.5, opacity_min: 0.1, sync: false },
-            },
-            move: {
-              speed: 1.2,
-              direction: "none",
-              random: true,
-              out_mode: "out",
-              bounce: false,
-              attract: { enable: true, rotateX: 600, rotateY: 1200 },
-            },
-            color: { value: ["#FFD700", "#FFA500", "#FFCC00", "#FF8C00"] },
-            line_linked: {
-              enable: true,
-              color: "#FFD700",
-              opacity: 0.3,
-              width: 1,
-              shadow: { enable: true, color: "#FFD700", blur: 5 },
-            },
-            shape: {
-              type: ["circle", "triangle", "polygon"],
-              polygon: { nb_sides: 6 },
-            },
-          },
-          interactivity: {
-            detect_on: "canvas",
-            events: {
-              onhover: { enable: true, mode: "bubble" },
-              onclick: { enable: true, mode: "push" },
-              resize: true,
-            },
-            modes: {
-              bubble: {
-                distance: 200,
-                size: 6,
-                duration: 2,
-                opacity: 0.8,
-                speed: 3,
+      {/* Simplified Particle Background for better performance */}
+      {!isMobile ? (
+        <Particles
+          className="absolute inset-0 z-0"
+          options={{
+            particles: {
+              number: {
+                value: 20,
+                density: { enable: true, value_area: 1200 },
+              }, // Reduced particle count
+              size: { value: 3, random: true },
+              opacity: { value: 0.4, random: true },
+              move: {
+                speed: 0.8, // Reduced speed
+                direction: "none",
+                random: true,
+                out_mode: "out",
+                bounce: false,
               },
-              push: { particles_nb: 4 },
+              color: { value: "#FFD700" }, // Simplified to single color
+              line_linked: {
+                enable: true,
+                color: "#FFD700",
+                opacity: 0.2,
+                width: 1,
+                shadow: { enable: false }, // Removed shadows
+              },
+              shape: {
+                type: "circle", // Simplified shape
+              },
             },
-          },
-          retina_detect: true,
-        }}
-      />
+            interactivity: {
+              detect_on: "canvas",
+              events: {
+                onhover: { enable: false }, // Disabled hover interactions
+                onclick: { enable: false }, // Disabled click interactions
+                resize: true,
+              },
+            },
+            retina_detect: false, // Disabled retina detection for performance
+          }}
+        />
+      ) : (
+        // Static background pattern for mobile - much better performance
+        <div className="absolute inset-0 z-0 bg-gradient-to-br from-yellow-50 to-white opacity-50">
+          <div
+            className="absolute inset-0 z-0 bg-repeat opacity-10"
+            style={{
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FFD700' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+              backgroundSize: "60px 60px",
+            }}
+          ></div>
+        </div>
+      )}
+
+      {/* Simplified Abstract Background Elements - conditionally render based on device */}
+      {!isMobile && (
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          {/* Reduced number of abstract elements */}
+          <div className="absolute top-0 right-0 w-full h-full overflow-hidden">
+            <motion.div
+              className="absolute top-[10%] right-[5%] w-64 h-64 rounded-full bg-gradient-to-br from-yellow-400/20 to-yellow-300/5 blur-xl"
+              animate={{
+                scale: [1, 1.2, 1],
+                opacity: [0.2, 0.15, 0.2],
+              }}
+              transition={{
+                duration: 15,
+                repeat: Infinity,
+                repeatType: "reverse",
+                ease: "easeInOut",
+              }}
+            />
+          </div>
+
+          {/* Single gradient beam instead of multiple */}
+          <div className="absolute inset-0">
+            <motion.div
+              className="absolute -right-1/4 top-1/4 w-1/2 h-[30rem] bg-gradient-to-l from-yellow-400/10 to-transparent blur-2xl"
+              animate={{
+                opacity: [0.1, 0.15, 0.1],
+              }}
+              transition={{
+                duration: 12,
+                repeat: Infinity,
+                repeatType: "reverse",
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Subtle Pattern Overlay */}
       <div
@@ -554,8 +631,8 @@ const LandingPage: React.FC = () => {
         <section className="mb-16">
           <motion.div
             className="text-center mb-10"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={!isMobile ? { opacity: 0, y: 30 } : { opacity: 1 }}
+            whileInView={!isMobile ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5 }}
           >
             <h2 className="inline-block text-3xl md:text-4xl font-bold text-gray-800 mb-3 relative">
@@ -568,8 +645,8 @@ const LandingPage: React.FC = () => {
             </p>
           </motion.div>
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={!isMobile ? { opacity: 0, y: 30 } : { opacity: 1 }}
+            whileInView={!isMobile ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <CardList />

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, lazy, Suspense } from "react";
 import { card } from "./App/Api/card";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -19,8 +19,10 @@ import {
   Send,
   AlertCircle,
 } from "lucide-react";
-import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+
+// Lazy load the PDF library since it's only used on form submission
+const importJsPDF = () => import("jspdf").then((module) => module.jsPDF);
+const importAutoTable = () => import("jspdf-autotable");
 
 interface DetailRoomProps {
   card: card;
@@ -41,6 +43,7 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Helper function to format price with commas
   const formatPrice = (price: number) => {
@@ -53,12 +56,21 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
 
-  // Lock body scroll when modal is open
+  // Lock body scroll when modal is open and detect mobile
   useEffect(() => {
     // Save the current body overflow style
     const originalStyle = window.getComputedStyle(document.body).overflow;
     // Prevent scrolling on mount
     document.body.style.overflow = "hidden";
+
+    // Detect mobile device
+    setIsMobile(
+      window.innerWidth < 768 ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        )
+    );
+
     // Re-enable scrolling on unmount
     return () => {
       document.body.style.overflow = originalStyle;
@@ -109,216 +121,232 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Function to generate PDF
-  const generatePDF = () => {
-    const doc = new jsPDF();
+  // Optimize PDF generation to be asynchronous
+  const generatePDF = async () => {
+    try {
+      // Dynamically import libraries only when needed
+      const [jsPDF, autoTable] = await Promise.all([
+        importJsPDF(),
+        importAutoTable(),
+      ]);
 
-    // Add margin
-    const margin = 20;
-    let y = margin;
+      const doc = new jsPDF();
 
-    // Header
-    doc.setFillColor(255, 193, 7); // Yellow color
-    doc.rect(0, 0, doc.internal.pageSize.width, 40, "F");
-    doc.setTextColor(0);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
-    doc.text("FORMULIR PENDAFTARAN SEWA", doc.internal.pageSize.width / 2, 20, {
-      align: "center",
-    });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
-    doc.text("MIMIN KOST", doc.internal.pageSize.width / 2, 30, {
-      align: "center",
-    });
+      // Add margin
+      const margin = 20;
+      let y = margin;
 
-    // Add date
-    y = 50;
-    const today = new Date();
-    doc.setFontSize(10);
-    doc.text(
-      `Tanggal: ${today.toLocaleDateString("id-ID", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })}`,
-      14,
-      y
-    );
-
-    // Referensi Nomor
-    doc.setFont("helvetica", "bold");
-    doc.text("NO REGISTRASI:", 130, y);
-    y += 5;
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      `REG-${card.nomorKamar}-${today.getFullYear()}${(today.getMonth() + 1)
-        .toString()
-        .padStart(2, "0")}${today.getDate().toString().padStart(2, "0")}`,
-      130,
-      y
-    );
-    y += 15;
-
-    // Personal Information
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("DATA PENYEWA", margin, y);
-    y += 10;
-
-    // Create personal info table
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-
-    const drawRow = (label: string, value: string) => {
-      doc.text(label, margin, y);
-      doc.text(":", margin + 40, y);
-      doc.text(value, margin + 45, y);
-      y += 7;
-    };
-
-    drawRow("Nama Lengkap", formData.fullName);
-    drawRow("Nomor Telepon", formData.phone);
-    drawRow("Email", formData.email);
-    drawRow("Nomor KTP", formData.idNumber);
-    y += 5;
-
-    // Kamar Info
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("INFORMASI KAMAR", margin, y);
-    y += 10;
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-
-    drawRow("Nomor Kamar", card.nomorKamar);
-    drawRow("Ukuran Kamar", "3x4 meter");
-
-    // Add fasilitas with text wrapping
-    const fasilitas = card.fasilitas;
-    doc.text("Fasilitas", margin, y);
-    doc.text(":", margin + 40, y);
-
-    const splitFasilitas = doc.splitTextToSize(fasilitas, 130);
-    doc.text(splitFasilitas, margin + 45, y);
-    y += splitFasilitas.length * 7 + 5;
-
-    // Rental Info
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("INFORMASI SEWA", margin, y);
-    y += 10;
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-
-    drawRow("Tanggal Masuk", formData.moveInDate);
-    drawRow("Durasi Sewa", `${formData.duration} bulan`);
-    y += 5;
-
-    // Payment Info
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("RINCIAN PEMBAYARAN", margin, y);
-    y += 10;
-
-    // Table Header for Payment
-    doc.setFillColor(240, 240, 240);
-    doc.rect(margin, y, 170, 10, "F");
-    doc.rect(margin, y, 170, 10, "S");
-
-    doc.setFontSize(10);
-    doc.text("KETERANGAN", margin + 5, y + 7);
-    doc.text("HARGA", margin + 80, y + 7);
-    doc.text("JUMLAH", margin + 110, y + 7);
-    doc.text("TOTAL", margin + 150, y + 7);
-    y += 10;
-
-    // Biaya Sewa
-    doc.rect(margin, y, 170, 10, "S");
-    doc.text(
-      `Sewa Kamar ${card.nomorKamar} (${formData.duration} bulan)`,
-      margin + 5,
-      y + 7
-    );
-    doc.text(`Rp ${formatPrice(card.hargaBulanan)}`, margin + 80, y + 7);
-    doc.text(formData.duration, margin + 110, y + 7);
-    doc.text(
-      `Rp ${formatPrice(card.hargaBulanan * parseInt(formData.duration))}`,
-      margin + 150,
-      y + 7
-    );
-    y += 10;
-
-    // Deposit
-    doc.rect(margin, y, 170, 10, "S");
-    doc.text("Deposit", margin + 5, y + 7);
-    doc.text(`Rp ${formatPrice(card.hargaBulanan)}`, margin + 80, y + 7);
-    doc.text("1", margin + 110, y + 7);
-    doc.text(`Rp ${formatPrice(card.hargaBulanan)}`, margin + 150, y + 7);
-    y += 15;
-
-    // Total
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("TOTAL PEMBAYARAN", margin + 80, y);
-    doc.text(
-      `Rp ${formatPrice(
-        card.hargaBulanan * (parseInt(formData.duration) + 1)
-      )}`,
-      margin + 150,
-      y
-    );
-    y += 20;
-
-    // Note
-    if (formData.additionalNotes) {
-      doc.setFontSize(11);
+      // Header
+      doc.setFillColor(255, 193, 7); // Yellow color
+      doc.rect(0, 0, doc.internal.pageSize.width, 40, "F");
+      doc.setTextColor(0);
       doc.setFont("helvetica", "bold");
-      doc.text("Catatan Tambahan:", margin, y);
-      y += 7;
-
+      doc.setFontSize(20);
+      doc.text(
+        "FORMULIR PENDAFTARAN SEWA",
+        doc.internal.pageSize.width / 2,
+        20,
+        {
+          align: "center",
+        }
+      );
       doc.setFont("helvetica", "normal");
-      const splitNotes = doc.splitTextToSize(formData.additionalNotes, 170);
-      doc.text(splitNotes, margin, y);
-      y += splitNotes.length * 7 + 10;
-    } else {
+      doc.setFontSize(12);
+      doc.text("MIMIN KOST", doc.internal.pageSize.width / 2, 30, {
+        align: "center",
+      });
+
+      // Add date
+      y = 50;
+      const today = new Date();
+      doc.setFontSize(10);
+      doc.text(
+        `Tanggal: ${today.toLocaleDateString("id-ID", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}`,
+        14,
+        y
+      );
+
+      // Referensi Nomor
+      doc.setFont("helvetica", "bold");
+      doc.text("NO REGISTRASI:", 130, y);
+      y += 5;
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `REG-${card.nomorKamar}-${today.getFullYear()}${(today.getMonth() + 1)
+          .toString()
+          .padStart(2, "0")}${today.getDate().toString().padStart(2, "0")}`,
+        130,
+        y
+      );
+      y += 15;
+
+      // Personal Information
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("DATA PENYEWA", margin, y);
       y += 10;
+
+      // Create personal info table
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+
+      const drawRow = (label: string, value: string) => {
+        doc.text(label, margin, y);
+        doc.text(":", margin + 40, y);
+        doc.text(value, margin + 45, y);
+        y += 7;
+      };
+
+      drawRow("Nama Lengkap", formData.fullName);
+      drawRow("Nomor Telepon", formData.phone);
+      drawRow("Email", formData.email);
+      drawRow("Nomor KTP", formData.idNumber);
+      y += 5;
+
+      // Kamar Info
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("INFORMASI KAMAR", margin, y);
+      y += 10;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+
+      drawRow("Nomor Kamar", card.nomorKamar);
+      drawRow("Ukuran Kamar", "3x4 meter");
+
+      // Add fasilitas with text wrapping
+      const fasilitas = card.fasilitas;
+      doc.text("Fasilitas", margin, y);
+      doc.text(":", margin + 40, y);
+
+      const splitFasilitas = doc.splitTextToSize(fasilitas, 130);
+      doc.text(splitFasilitas, margin + 45, y);
+      y += splitFasilitas.length * 7 + 5;
+
+      // Rental Info
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("INFORMASI SEWA", margin, y);
+      y += 10;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+
+      drawRow("Tanggal Masuk", formData.moveInDate);
+      drawRow("Durasi Sewa", `${formData.duration} bulan`);
+      y += 5;
+
+      // Payment Info
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("RINCIAN PEMBAYARAN", margin, y);
+      y += 10;
+
+      // Table Header for Payment
+      doc.setFillColor(240, 240, 240);
+      doc.rect(margin, y, 170, 10, "F");
+      doc.rect(margin, y, 170, 10, "S");
+
+      doc.setFontSize(10);
+      doc.text("KETERANGAN", margin + 5, y + 7);
+      doc.text("HARGA", margin + 80, y + 7);
+      doc.text("JUMLAH", margin + 110, y + 7);
+      doc.text("TOTAL", margin + 150, y + 7);
+      y += 10;
+
+      // Biaya Sewa
+      doc.rect(margin, y, 170, 10, "S");
+      doc.text(
+        `Sewa Kamar ${card.nomorKamar} (${formData.duration} bulan)`,
+        margin + 5,
+        y + 7
+      );
+      doc.text(`Rp ${formatPrice(card.hargaBulanan)}`, margin + 80, y + 7);
+      doc.text(formData.duration, margin + 110, y + 7);
+      doc.text(
+        `Rp ${formatPrice(card.hargaBulanan * parseInt(formData.duration))}`,
+        margin + 150,
+        y + 7
+      );
+      y += 10;
+
+      // Deposit
+      doc.rect(margin, y, 170, 10, "S");
+      doc.text("Deposit", margin + 5, y + 7);
+      doc.text(`Rp ${formatPrice(card.hargaBulanan)}`, margin + 80, y + 7);
+      doc.text("1", margin + 110, y + 7);
+      doc.text(`Rp ${formatPrice(card.hargaBulanan)}`, margin + 150, y + 7);
+      y += 15;
+
+      // Total
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("TOTAL PEMBAYARAN", margin + 80, y);
+      doc.text(
+        `Rp ${formatPrice(
+          card.hargaBulanan * (parseInt(formData.duration) + 1)
+        )}`,
+        margin + 150,
+        y
+      );
+      y += 20;
+
+      // Note
+      if (formData.additionalNotes) {
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text("Catatan Tambahan:", margin, y);
+        y += 7;
+
+        doc.setFont("helvetica", "normal");
+        const splitNotes = doc.splitTextToSize(formData.additionalNotes, 170);
+        doc.text(splitNotes, margin, y);
+        y += splitNotes.length * 7 + 10;
+      } else {
+        y += 10;
+      }
+
+      // Signature area
+      doc.setFontSize(11);
+      doc.text("Penyewa", margin + 30, y);
+      doc.text("Pengelola", margin + 130, y);
+
+      y += 25;
+      doc.line(margin, y, margin + 60, y); // Signature line for tenant
+      doc.line(margin + 100, y, margin + 160, y); // Signature line for management
+
+      y += 5;
+      doc.text(`( ${formData.fullName} )`, margin + 15, y);
+      doc.text("( Admin MIMIN KOST )", margin + 115, y);
+
+      // Footer
+      doc.setFillColor(255, 193, 7);
+      doc.rect(
+        0,
+        doc.internal.pageSize.height - 20,
+        doc.internal.pageSize.width,
+        20,
+        "F"
+      );
+      doc.setFontSize(10);
+      doc.text(
+        "Formulir ini merupakan bukti pendaftaran sewa kamar kos dan wajib dibawa saat check-in.",
+        doc.internal.pageSize.width / 2,
+        doc.internal.pageSize.height - 10,
+        { align: "center" }
+      );
+
+      return doc;
+    } catch (error) {
+      console.error("Error loading PDF libraries:", error);
+      throw error;
     }
-
-    // Signature area
-    doc.setFontSize(11);
-    doc.text("Penyewa", margin + 30, y);
-    doc.text("Pengelola", margin + 130, y);
-
-    y += 25;
-    doc.line(margin, y, margin + 60, y); // Signature line for tenant
-    doc.line(margin + 100, y, margin + 160, y); // Signature line for management
-
-    y += 5;
-    doc.text(`( ${formData.fullName} )`, margin + 15, y);
-    doc.text("( Admin MIMIN KOST )", margin + 115, y);
-
-    // Footer
-    doc.setFillColor(255, 193, 7);
-    doc.rect(
-      0,
-      doc.internal.pageSize.height - 20,
-      doc.internal.pageSize.width,
-      20,
-      "F"
-    );
-    doc.setFontSize(10);
-    doc.text(
-      "Formulir ini merupakan bukti pendaftaran sewa kamar kos dan wajib dibawa saat check-in.",
-      doc.internal.pageSize.width / 2,
-      doc.internal.pageSize.height - 10,
-      { align: "center" }
-    );
-
-    return doc;
   };
 
   // Function to open WhatsApp with form data
@@ -360,44 +388,56 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Optimize form submission to be non-blocking
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (validateForm()) {
       setIsSubmitting(true);
 
-      // Generate PDF and save it
       try {
-        const pdf = generatePDF();
-        pdf.save(
-          `Formulir_Sewa_Kamar_${card.nomorKamar}_${formData.fullName}.pdf`
-        );
+        // Generate PDF in a non-blocking way
+        setTimeout(async () => {
+          try {
+            const pdf = await generatePDF();
+            pdf.save(
+              `Formulir_Sewa_Kamar_${card.nomorKamar}_${formData.fullName}.pdf`
+            );
+
+            // Open WhatsApp with the form data
+            openWhatsApp();
+
+            // Show success message
+            setIsSubmitting(false);
+            setShowSuccess(true);
+
+            // Reset form after showing success
+            setTimeout(() => {
+              setShowRentalForm(false);
+              setShowSuccess(false);
+              setFormData({
+                fullName: "",
+                phone: "",
+                email: "",
+                idNumber: "",
+                moveInDate: "",
+                duration: "3",
+                additionalNotes: "",
+              });
+            }, 2000);
+          } catch (error) {
+            console.error("Error generating PDF:", error);
+            setIsSubmitting(false);
+            // Show error message to the user
+            alert(
+              "Maaf, terjadi kesalahan saat membuat PDF. Silakan coba lagi."
+            );
+          }
+        }, 100);
       } catch (error) {
-        console.error("Error generating PDF:", error);
-      }
-
-      // Open WhatsApp with the form data
-      openWhatsApp();
-
-      // Simulate server response for UI feedback
-      setTimeout(() => {
+        console.error("Error during form submission:", error);
         setIsSubmitting(false);
-        setShowSuccess(true);
-        // Reset form after showing success
-        setTimeout(() => {
-          setShowRentalForm(false);
-          setShowSuccess(false);
-          setFormData({
-            fullName: "",
-            phone: "",
-            email: "",
-            idNumber: "",
-            moveInDate: "",
-            duration: "3",
-            additionalNotes: "",
-          });
-        }, 2000);
-      }, 1500);
+      }
     }
   };
 
@@ -411,6 +451,7 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={{ duration: isMobile ? 0.2 : 0.3 }} // Faster transitions on mobile
       onClick={onClose}
     >
       <motion.div
@@ -418,7 +459,11 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+        transition={
+          isMobile
+            ? { type: "tween", duration: 0.2 } // Simpler animation for mobile
+            : { type: "spring", damping: 25, stiffness: 300 }
+        }
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
@@ -609,6 +654,7 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: isMobile ? 0.2 : 0.3 }}
             onClick={() => setShowRentalForm(false)}
           >
             <motion.div
@@ -616,7 +662,11 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              transition={
+                isMobile
+                  ? { type: "tween", duration: 0.2 }
+                  : { type: "spring", damping: 25, stiffness: 300 }
+              }
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close button */}
@@ -971,8 +1021,8 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
                     type="submit"
                     disabled={isSubmitting}
                     className="w-full p-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-lg font-bold shadow-md hover:from-yellow-600 hover:to-yellow-700 transition-colors flex items-center justify-center gap-2"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={isMobile ? {} : { scale: 1.02 }}
+                    whileTap={isMobile ? {} : { scale: 0.98 }}
                   >
                     {isSubmitting ? (
                       <>
