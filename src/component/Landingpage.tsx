@@ -53,6 +53,8 @@ const CardList = () => {
   const [selectedCard, setSelectedCard] = useState<Card | null>(null); // Define the type for selectedCard
   const [isMobile, setIsMobile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [visibleCards, setVisibleCards] = useState<number>(6); // Limit initial render
 
   useEffect(() => {
     // Detect mobile
@@ -63,54 +65,141 @@ const CardList = () => {
         )
     );
 
-    // Fetch room data from the backend with loading state
-    setIsLoading(true);
-    axios
-      .get("https://manage-kost-production.up.railway.app/api/kamar")
-      .then((response) => {
-        setCards(
-          response.data.map((item: Card) => ({
-            ...item,
-            // We'll override the image in the rendering
-          }))
+    // Fetch room data with optimized approach
+    const fetchRooms = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // Set a timeout to handle slow connections
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout fetching rooms")), 10000)
         );
+
+        // Actual API request
+        const fetchPromise = axios.get(
+          "https://manage-kost-production.up.railway.app/api/kamar"
+        );
+
+        // Race between timeout and fetch
+        const response = (await Promise.race([
+          fetchPromise,
+          timeoutPromise,
+        ])) as any;
+
+        // Process data minimally for first render
+        const processedCards = response.data.map((item: Card) => ({
+          id: item.id,
+          nomorKamar: item.nomorKamar,
+          status: item.status,
+          hargaBulanan: item.hargaBulanan,
+          fasilitas: item.fasilitas?.substring(0, 100) || "", // Limit text length initially
+          // Default values for optional fields
+          title: item.title || `Kamar ${item.nomorKamar}`,
+          description:
+            item.description || item.fasilitas?.substring(0, 100) || "",
+          price: item.price || item.hargaBulanan,
+        }));
+
+        setCards(processedCards);
         setIsLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching room data:", error);
+      } catch (err) {
+        console.error("Error fetching room data:", err);
+        setError("Gagal memuat data kamar, silakan coba lagi.");
         setIsLoading(false);
-      });
+      }
+    };
+
+    fetchRooms();
   }, []);
 
-  // If loading, show a simple loading indicator
+  // Load more cards function
+  const loadMoreCards = () => {
+    setVisibleCards((prevCount) => prevCount + 6);
+  };
+
+  // Better loading state with skeleton cards
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
+      <div className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {[...Array(3)].map((_, index) => (
+            <div
+              key={index}
+              className="bg-white rounded-xl shadow-lg overflow-hidden border border-yellow-100 animate-pulse"
+            >
+              <div className="h-56 bg-gray-200"></div>
+              <div className="p-5">
+                <div className="h-6 bg-gray-200 rounded w-2/3 mb-3"></div>
+                <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-5/6 mb-4"></div>
+                <div className="flex justify-between items-center">
+                  <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+                  <div className="h-10 bg-gray-200 rounded w-1/4"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          <p>{error}</p>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors"
+        >
+          Muat Ulang
+        </button>
+      </div>
+    );
+  }
+
+  // No data state
+  if (cards.length === 0) {
+    return (
+      <div className="flex justify-center items-center py-12 px-4 text-center">
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
+          <p>Tidak ada kamar tersedia saat ini. Silakan coba lagi nanti.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Main render with optimized approach - only show a subset initially
+  const displayedCards = cards.slice(0, visibleCards);
+
   return (
     <div className="p-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {cards.map((item, index) => (
+        {displayedCards.map((item, index) => (
           <motion.div
             key={item.id}
-            className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105 border border-yellow-100"
-            initial={!isMobile ? { opacity: 0, y: 50 } : { opacity: 1 }}
-            whileInView={!isMobile ? { opacity: 1, y: 0 } : {}}
-            transition={!isMobile ? { duration: 0.5, delay: index * 0.1 } : {}}
-            viewport={{ once: true }}
+            className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl hover:scale-105 border border-yellow-100"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: index * 0.05 }}
+            layoutId={`card-${item.id}`}
           >
             <div className="relative">
-              <img
-                src={roomImage}
-                alt={`Kamar ${item.nomorKamar}`}
-                className={`w-full h-56 object-cover transition-all duration-300 ${
-                  item.status !== "kosong" ? "blur-[4px]" : ""
-                }`}
-              />
+              {/* Use a lightweight image placeholder initially */}
+              <div className="w-full h-56 bg-gray-100 relative">
+                <img
+                  src={roomImage}
+                  alt={`Kamar ${item.nomorKamar}`}
+                  className={`w-full h-full object-cover transition-all ${
+                    item.status !== "kosong" ? "blur-[4px]" : ""
+                  }`}
+                  loading="lazy" // Use lazy loading for images
+                />
+              </div>
               <div className="absolute top-3 right-3">
                 <span
                   className={`text-xs font-bold px-3 py-1 rounded-full ${
@@ -127,6 +216,7 @@ const CardList = () => {
               <h1 className="text-xl font-bold text-gray-800 mb-1">
                 Kamar {item.nomorKamar}
               </h1>
+              {/* Limit text length for better performance */}
               <p className="text-sm text-gray-500 mb-3 line-clamp-2">
                 {item.fasilitas}
               </p>
@@ -148,11 +238,25 @@ const CardList = () => {
           </motion.div>
         ))}
       </div>
+
+      {/* Load more button - only shown if there are more cards to display */}
+      {visibleCards < cards.length && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={loadMoreCards}
+            className="px-6 py-2 bg-yellow-100 text-yellow-700 hover:bg-yellow-200 rounded-full font-medium transition-colors flex items-center gap-2"
+          >
+            Lihat Lebih Banyak
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
+
       {selectedCard && (
         <DetailRoom
           card={{
             ...selectedCard,
-            image: roomImage, // Use the imported image for detail view too
+            image: roomImage, // Use the imported image for detail view
           }}
           onClose={() => setSelectedCard(null)}
         />
