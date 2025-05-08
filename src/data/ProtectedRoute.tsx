@@ -1,14 +1,21 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, Route } from "react-router-dom";
 
 const ProtectedRoute = ({
   isLoggedIn,
   isAdmin,
+  authLoading,
   adminOnly = false,
 }: {
   isLoggedIn: boolean;
   isAdmin: boolean;
+  authLoading: boolean;
   adminOnly?: boolean;
 }) => {
+  // Tampilkan loading indicator atau kosong saat sedang loading
+  if (authLoading) {
+    return null; // atau komponen loading seperti <LoadingSpinner />
+  }
+
   // Jika user belum login, arahkan ke halaman login
   if (!isLoggedIn) {
     return <Navigate to="/" replace />;

@@ -97,13 +97,15 @@ const Layout = ({
   setIsAdmin,
   roomId,
   setRoomId,
+  authLoading,
 }: {
   setIsLoggedIn: React.Dispatch<React.SetStateAction<boolean>>;
   isLoggedIn: boolean;
   isAdmin: boolean;
   setIsAdmin: React.Dispatch<React.SetStateAction<boolean>>;
-  roomId: string;
+  roomId: string; // Added roomId to the type definition
   setRoomId: React.Dispatch<React.SetStateAction<string>>;
+  authLoading: boolean;
 }) => {
   const location = useLocation();
 
@@ -162,7 +164,11 @@ const Layout = ({
           />
           <Route
             element={
-              <ProtectedRoute isLoggedIn={isLoggedIn} isAdmin={isAdmin} />
+              <ProtectedRoute
+                isLoggedIn={isLoggedIn}
+                isAdmin={isAdmin}
+                authLoading={authLoading} // Gunakan state authLoading yang asli
+              />
             }
           >
             <Route path="*" element={<NotFound />} />
@@ -213,6 +219,7 @@ const Layout = ({
               <ProtectedRoute
                 isLoggedIn={isLoggedIn}
                 isAdmin={isAdmin}
+                authLoading={authLoading} // Gunakan state authLoading yang asli
                 adminOnly
               />
             }
@@ -244,39 +251,71 @@ const AppWrapper = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [roomId, setRoomId] = useState<string>(""); // Tambahkan state roomId
+  const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    // Periksa cookie non-HttpOnly sebagai indikator login
-    const isLoggedInCookie = Cookies.get("isLoggedIn") === "true";
+    const checkAuth = async () => {
+      try {
+        setAuthLoading(true);
 
-    if (isLoggedInCookie) {
-      setIsLoggedIn(true);
+        // Periksa cookie isLoggedIn
+        const isLoggedInCookie = Cookies.get("isLoggedIn");
 
-      // Ambil data user dengan request ke API yang diproteksi
-      axios
-        .get(`${API_BASE_URL}/api/auth/user-info`, {
-          withCredentials: true,
-        })
-        .then((response) => {
-          const userData = response.data;
-          setIsAdmin(userData.role === "ADMIN");
-          setRoomId(userData.roomId || "");
-
-          if (!Cookies.get("isLoggedIn")) {
-            Cookies.set("isLoggedIn", "true", { 
-              expires: 7, 
-              path: "/",
-              sameSite: "Strict"
-            });
-          }
-        })
-        .catch((error) => {
-          // Jika request gagal, berarti sesi tidak valid
-          console.error("Sesi login tidak valid:", error);
-          setIsLoggedIn(false);
-          Cookies.remove("isLoggedIn", { path: "/" });
+        // Debug: tampilkan info cookie saat load
+        console.log("Cookie saat load:", {
+          isLoggedIn: isLoggedInCookie,
+          authToken: Cookies.get("authToken") ? "exists" : "missing",
         });
-    }
+
+        if (isLoggedInCookie === "true") {
+          setIsLoggedIn(true);
+
+          try {
+            // Ambil data user dengan request ke API
+            const response = await axios.get(
+              `${API_BASE_URL}/api/auth/user-info`,
+              {
+                withCredentials: true, // Penting untuk mengirim cookie
+              }
+            );
+
+            const userData = response.data;
+            setIsAdmin(userData.role === "ADMIN");
+            setRoomId(userData.roomId || "");
+
+            // Pastikan cookie isLoggedIn masih ada, jika tidak, set ulang
+            if (!Cookies.get("isLoggedIn")) {
+              console.log("Memperbarui cookie isLoggedIn yang hilang");
+              Cookies.set("isLoggedIn", "true", {
+                expires: 7, // 7 hari
+                path: "/",
+                sameSite: "Lax", // Lebih kompatibel dibanding "Strict"
+              });
+            }
+          } catch (error) {
+            console.error("Error saat verifikasi token:", error);
+
+            // Jangan langsung hapus cookie disini, cek dulu apa errornya
+            if (axios.isAxiosError(error) && error.response?.status === 401) {
+              console.log("Token tidak valid, menghapus cookie");
+              Cookies.remove("isLoggedIn", { path: "/" });
+              Cookies.remove("authToken", { path: "/" });
+              setIsLoggedIn(false);
+            } else {
+              // Error lain (misalnya network error), coba pertahankan sesi
+              console.log("Error bukan 401, pertahankan sesi");
+            }
+          }
+        } else {
+          console.log("Cookie isLoggedIn tidak ditemukan");
+          setIsLoggedIn(false);
+        }
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    checkAuth();
   }, []);
 
   return (
@@ -286,8 +325,9 @@ const AppWrapper = () => {
         isLoggedIn={isLoggedIn}
         isAdmin={isAdmin}
         setIsAdmin={setIsAdmin}
-        roomId={roomId} // Berikan roomId ke Layout
-        setRoomId={setRoomId}
+        authLoading={authLoading}
+        setRoomId={setRoomId} // Gunakan fungsi state setter asli
+        roomId={roomId} // Gunakan state roomId asli
       />
     </Router>
   );
@@ -312,33 +352,6 @@ const DropdownNavbar = ({
     Cookies.remove("refreshToken"); // Remove the roomId from cookies
     window.location.href = "/";
   };
-
-  useEffect(() => {
-    // const googleTranslateElementInit = () => {
-    //   new window.google.translate.TranslateElement(
-    //     {
-    //       pageLanguage: "id",
-    //       includedLanguages: "en,id", // Adjust languages as needed
-    //       layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
-    //       autoDisplay: false,
-    //     },
-    //     "google_translate_element"
-    //   );
-    // };
-    // // Attach the initialization function to the global window object
-    // window.googleTranslateElementInit = googleTranslateElementInit;
-    // // Dynamically load the Google Translate script
-    // const script = document.createElement("script");
-    // script.src =
-    //   "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
-    // script.async = true;
-    // document.body.appendChild(script);
-    // // Cleanup script on component unmount
-    // return () => {
-    //   document.body.removeChild(script);
-    //   delete window.googleTranslateElementInit; // Safe to delete now
-    // };
-  }, []);
 
   return (
     <nav className="bg-gray-800 text-white p-4 flex justify-between items-center">

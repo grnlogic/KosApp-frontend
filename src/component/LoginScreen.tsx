@@ -189,34 +189,39 @@ const LoginScreen = ({
       } else {
         // Regular user - check if they have a roomId
         if (data.roomId) {
-          // Show success notification
-          Swal.fire({
-            title: "Login Berhasil!",
-            text: "Selamat datang kembali!",
-            icon: "success",
-            confirmButtonColor: "#FEBF00",
-            timer: 2000,
-            timerProgressBar: true,
-          }).then(() => {
-            // Navigate to the appropriate room page based on roomId
-            if (data.roomId === "1") {
-              navigate("/Home"); // Kamar 1 uses /Home route
-            } else {
-              navigate(`/Home${data.roomId}`); // Other rooms use /Home2, /Home3, etc.
-            }
-          });
+          // Periksa apakah roomId adalah "Belum memilih kamar"
+          if (data.roomId === "Belum memilih kamar") {
+            // Pengguna belum memilih kamar - arahkan ke LandingPage
+            Swal.fire({
+              title: "Login Berhasil!",
+              text: "Silakan pilih kamar Anda terlebih dahulu",
+              icon: "success",
+              confirmButtonColor: "#FEBF00",
+              timer: 2000,
+              timerProgressBar: true,
+            }).then(() => {
+              navigate("/LandingPage");
+            });
+          } else {
+            // Show success notification
+            Swal.fire({
+              title: "Login Berhasil!",
+              text: "Selamat datang kembali!",
+              icon: "success",
+              confirmButtonColor: "#FEBF00",
+              timer: 2000,
+              timerProgressBar: true,
+            }).then(() => {
+              // Navigate to the appropriate room page based on roomId
+              if (data.roomId === "1") {
+                navigate("/Home"); // Kamar 1 uses /Home route
+              } else {
+                navigate(`/Home${data.roomId}`); // Other rooms use /Home2, /Home3, etc.
+              }
+            });
+          }
         } else {
-          // User doesn't have a room assigned yet - redirect to LandingPage explicitly
-          Swal.fire({
-            title: "Login Berhasil!",
-            text: "Selamat datang di MiminKost",
-            icon: "success",
-            confirmButtonColor: "#FEBF00",
-            timer: 2000,
-            timerProgressBar: true,
-          }).then(() => {
-            navigate("/LandingPage"); // Explicitly navigate to LandingPage component
-          });
+          // ...existing code for users without roomId...
         }
       }
     } catch (error) {
@@ -616,7 +621,7 @@ const LoginScreen = ({
       {/* Enhanced Logo Animation */}
       <div
         className={`flex justify-center items-center absolute top-0 left-0 right-0 bottom-0 transition-all duration-1000 ${
-          logoMove ? "translate-y-[-40px]" : "translate-y-0"
+          logoMove ? "md:translate-y-[-100px] translate-y-[-40px]" : "translate-y-0"
         }`}
       >
         <img
@@ -889,22 +894,22 @@ const LoginScreen = ({
                 Verifikasi & Daftar
               </button>
 
-              <div className="mt-6 flex justify-between items-center">
+              <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <button
-                  className="px-6 py-3 bg-white text-black border-2 border-black rounded-xl transition-all duration-300 hover:bg-gray-50 hover:scale-105 active:scale-95"
+                  className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-white text-black border-2 border-black rounded-xl transition-all duration-300 hover:bg-gray-50 hover:scale-105 active:scale-95 text-sm sm:text-base"
                   onClick={handleBackFromOtp}
                 >
                   Kembali
                 </button>
 
                 <button
-                  className={`px-6 py-3 ${
+                  className={`w-full sm:w-auto px-4 sm:px-6 py-3 ${
                     isResendDisabled
                       ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                       : "bg-[#FEBF00] text-white hover:bg-[#FEA700]"
                   } rounded-xl transition-all duration-300 ${
                     !isResendDisabled && "hover:scale-105 active:scale-95"
-                  }`}
+                  } text-sm sm:text-base whitespace-nowrap`}
                   onClick={handleResendOtp}
                   disabled={isResendDisabled}
                 >
