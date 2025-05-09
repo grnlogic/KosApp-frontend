@@ -9,6 +9,7 @@ import {
   EyeOff,
   Check,
   AlertCircle,
+  Bell,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
@@ -23,10 +24,35 @@ interface User {
   phoneNumber: string;
   roomId: number | null;
   role: string;
+  pendingRegistration?: boolean;
+  requestedRoomId?: number | string | null; // Perbaikan tipe data untuk kompatibilitas
+  // Tambahkan properti untuk data sewa dari PendingRegistrationRequest
+  roomNumber?: string;
+  durasiSewa?: number;
+  tanggalMulai?: string;
+  metodePembayaran?: string;
+  totalPembayaran?: number;
 }
 
 interface ErrorResponse {
   message: string;
+}
+
+// Add this interface right after the User interface
+interface PendingRegistrationRequest {
+  id: string;
+  username: string;
+  email: string;
+  phoneNumber?: string;
+  requestedRoomId: string | number;
+  roomNumber?: string;
+  // Tambahkan informasi sewa
+  durasiSewa?: number;
+  tanggalMulai?: string;
+  metodePembayaran?: string;
+  totalPembayaran?: number;
+  timestamp: number;
+  status: "pending";
 }
 
 // URL API dasar
@@ -45,48 +71,374 @@ export default function EditAkunPenghuni() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-// Mengambil data pengguna dari backend
-const fetchUsers = async () => {
-  setIsLoading(true);
-  try {
-    // Panggil API untuk mendapatkan data pengguna
-    const response = await axios.get(`${API_URL}/api/users`);
-    
-    if (response.status === 200) {
-      setUsers(response.data);
-    } else {
-      throw new Error("Server responded with non-success status");
+  // Add new state for notifications
+  const [pendingRequests, setPendingRequests] = useState<User[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  // Modify the fetchPendingRegistrations function to read from localStorage
+  const fetchPendingRegistrations = async () => {
+    try {
+      // First try to get any existing API pending registrations
+      const response = await axios
+        .get(`${API_URL}/api/users/pending-registrations`)
+        .catch(() => ({ status: 404, data: [] }));
+
+      // Then get locally stored pending requests
+      const localPendingRequests: PendingRegistrationRequest[] = JSON.parse(
+        localStorage.getItem("pendingRoomRequests") || "[]"
+      );
+
+      // Convert local requests to User format for consistency
+      const localRequestsAsUsers: User[] = localPendingRequests.map((req) => ({
+        id:
+          parseInt(req.id.replace("req-", "")) ||
+          Math.floor(Math.random() * 10000),
+        username: req.username,
+        email: req.email,
+        phoneNumber: req.phoneNumber || "",
+        roomId: null,
+        role: "PENDING_USER",
+        pendingRegistration: true,
+        requestedRoomId: req.requestedRoomId,
+        // Salin properti tambahan untuk sewa
+        roomNumber: req.roomNumber,
+        durasiSewa: req.durasiSewa,
+        tanggalMulai: req.tanggalMulai,
+        metodePembayaran: req.metodePembayaran,
+        totalPembayaran: req.totalPembayaran,
+      }));
+
+      // Combine API results with local storage results
+      const allPendingRequests =
+        response.status === 200
+          ? [...response.data, ...localRequestsAsUsers]
+          : localRequestsAsUsers;
+
+      setPendingRequests(allPendingRequests);
+      setNotificationCount(allPendingRequests.length);
+    } catch (err) {
+      console.error("Error fetching pending registrations:", err);
+
+      // Fall back to just local storage data if API call fails
+      try {
+        const localPendingRequests: PendingRegistrationRequest[] = JSON.parse(
+          localStorage.getItem("pendingRoomRequests") || "[]"
+        );
+
+        // Convert to User format
+        const localRequestsAsUsers: User[] = localPendingRequests.map(
+          (req) => ({
+            id:
+              parseInt(req.id.replace("req-", "")) ||
+              Math.floor(Math.random() * 10000),
+            username: req.username,
+            email: req.email,
+            phoneNumber: req.phoneNumber || "",
+            roomId: null,
+            role: "PENDING_USER",
+            pendingRegistration: true,
+            requestedRoomId: req.requestedRoomId,
+            // Salin properti tambahan untuk sewa
+            roomNumber: req.roomNumber,
+            durasiSewa: req.durasiSewa,
+            tanggalMulai: req.tanggalMulai,
+            metodePembayaran: req.metodePembayaran,
+            totalPembayaran: req.totalPembayaran,
+          })
+        );
+
+        setPendingRequests(localRequestsAsUsers);
+        setNotificationCount(localRequestsAsUsers.length);
+      } catch (e) {
+        console.error("Error parsing local pending requests:", e);
+        setPendingRequests([]);
+        setNotificationCount(0);
+      }
     }
-  } catch (err) {
-    console.error("Error fetching users:", err);
-    
-    // Tampilkan error menggunakan SweetAlert
-    const axiosError = err as AxiosError<ErrorResponse>;
-    const errorMessage = 
-      axiosError.response?.data?.message || 
-      "Terjadi kesalahan saat mengambil data penghuni";
-    
-    setError(errorMessage);
-    
-    Swal.fire({
-      icon: "error",
-      title: "Gagal Mengambil Data",
-      text: errorMessage,
-      confirmButtonColor: "#000",
-    });
-    
-    // Inisialisasi users sebagai array kosong, bukan data dummy
-    setUsers([]);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
+
+  // Approve a registration request
+  const handleApproveRequest = async (userId: number) => {
+    try {
+      // Show loading indicator
+      Swal.fire({
+        title: "Memproses...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      // Check if this is a localStorage request
+      const isLocalRequest = pendingRequests.find(
+        (req) => req.id === userId && req.pendingRegistration
+      );
+
+      if (isLocalRequest) {
+        // For localStorage requests, we'll create a new user with the requested room
+        try {
+          // First register the user through the existing API
+          const registerResponse = await axios.post(
+            `${API_URL}/api/auth/register-direct`,
+            {
+              username: isLocalRequest.username,
+              email: isLocalRequest.email,
+              password: "Password123", // Default password that user can reset later
+              phoneNumber: isLocalRequest.phoneNumber || "",
+              role: "USER",
+            }
+          );
+
+          if (registerResponse.status === 200) {
+            // User created successfully, now let's try to assign the room
+            // We need to get the created user's ID
+            const allUsers = await axios.get(`${API_URL}/api/users`);
+            const createdUser = allUsers.data.find(
+              (u: User) => u.email === isLocalRequest.email
+            );
+
+            if (createdUser) {
+              // Assign the room to the user
+              await axios.put(
+                `${API_URL}/api/users/${createdUser.id}/assign-user-room`,
+                { roomId: isLocalRequest.requestedRoomId }
+              );
+
+              // Update the room status to "terisi" in the kamar API
+              try {
+                await axios
+                  .get(`${API_URL}/api/kamar/${isLocalRequest.requestedRoomId}`)
+                  .then((roomResponse) => {
+                    if (roomResponse.data) {
+                      axios.put(
+                        `${API_URL}/api/kamar/${isLocalRequest.requestedRoomId}`,
+                        {
+                          ...roomResponse.data,
+                          status: "terisi",
+                        }
+                      );
+                    }
+                  });
+              } catch (roomError) {
+                console.warn("Gagal memperbarui status kamar:", roomError);
+              }
+
+              // TODO: Ideally, we'd also save the rental information to a rentals table in the database
+              // For now, we can just show a success message that includes the rental details
+            }
+
+            // Remove this request from localStorage
+            const localRequests = JSON.parse(
+              localStorage.getItem("pendingRoomRequests") || "[]"
+            );
+            const updatedRequests = localRequests.filter(
+              (req: PendingRegistrationRequest) => `req-${userId}` !== req.id
+            );
+            localStorage.setItem(
+              "pendingRoomRequests",
+              JSON.stringify(updatedRequests)
+            );
+
+            // Update state
+            setPendingRequests(
+              pendingRequests.filter((req) => req.id !== userId)
+            );
+            setNotificationCount((prev) => prev - 1);
+
+            // Refresh the user list
+            fetchUsers();
+
+            let successMessage = `Penghuni ${
+              isLocalRequest.username
+            } berhasil terdaftar untuk kamar ${
+              isLocalRequest.roomNumber || isLocalRequest.requestedRoomId
+            }`;
+            if (isLocalRequest.durasiSewa) {
+              successMessage += `\nDetail sewa: ${isLocalRequest.durasiSewa} bulan, mulai ${isLocalRequest.tanggalMulai}`;
+              successMessage += `\nTotal pembayaran: Rp ${isLocalRequest.totalPembayaran?.toLocaleString()}`;
+            }
+
+            Swal.fire({
+              icon: "success",
+              title: "Permintaan Diterima",
+              text: successMessage,
+              confirmButtonColor: "#000",
+            });
+          }
+        } catch (error) {
+          console.error("Error creating user from local request:", error);
+          Swal.fire({
+            icon: "error",
+            title: "Gagal Menyetujui",
+            text: "Terjadi kesalahan saat membuat akun pengguna",
+            confirmButtonColor: "#000",
+          });
+        }
+        return;
+      }
+
+      // Handle API-based requests normally
+      const response = await axios.post(
+        `${API_URL}/api/users/${userId}/approve-registration`
+      );
+
+      if (response.status === 200) {
+        // Remove this request from pendingRequests
+        setPendingRequests(pendingRequests.filter((req) => req.id !== userId));
+        setNotificationCount((prev) => prev - 1);
+
+        // Refresh the user list
+        fetchUsers();
+
+        Swal.fire({
+          icon: "success",
+          title: "Permintaan Diterima",
+          text: "Penghuni berhasil terdaftar untuk kamar",
+          confirmButtonColor: "#000",
+        });
+      }
+    } catch (err) {
+      console.error("Error approving request:", err);
+
+      const axiosError = err as AxiosError<ErrorResponse>;
+      const errorMessage =
+        axiosError.response?.data?.message ||
+        "Terjadi kesalahan saat menyetujui permintaan";
+
+      Swal.fire({
+        icon: "error",
+        title: "Gagal Menyetujui",
+        text: errorMessage,
+        confirmButtonColor: "#000",
+      });
+    }
+  };
+
+  // Reject a registration request
+  const handleRejectRequest = async (userId: number) => {
+    try {
+      // Show loading indicator
+      Swal.fire({
+        title: "Memproses...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      // Check if this is a localStorage request
+      const isLocalRequest = pendingRequests.find(
+        (req) => req.id === userId && req.pendingRegistration
+      );
+
+      if (isLocalRequest) {
+        // For localStorage requests, just remove it from storage
+        const localRequests: PendingRegistrationRequest[] = JSON.parse(
+          localStorage.getItem("pendingRoomRequests") || "[]"
+        );
+        const updatedRequests = localRequests.filter(
+          (req: PendingRegistrationRequest) => `req-${userId}` !== req.id
+        );
+        localStorage.setItem(
+          "pendingRoomRequests",
+          JSON.stringify(updatedRequests)
+        );
+
+        // Update UI
+        setPendingRequests(pendingRequests.filter((req) => req.id !== userId));
+        setNotificationCount((prev) => prev - 1);
+
+        Swal.fire({
+          icon: "success",
+          title: "Permintaan Ditolak",
+          confirmButtonColor: "#000",
+        });
+        return;
+      }
+
+      // Handle API-based requests normally
+      const response = await axios.post(
+        `${API_URL}/api/users/${userId}/reject-registration`
+      );
+
+      if (response.status === 200) {
+        // Remove this request from pendingRequests
+        setPendingRequests(pendingRequests.filter((req) => req.id !== userId));
+        setNotificationCount((prev) => prev - 1);
+
+        Swal.fire({
+          icon: "success",
+          title: "Permintaan Ditolak",
+          confirmButtonColor: "#000",
+        });
+      }
+    } catch (err) {
+      console.error("Error rejecting request:", err);
+
+      const axiosError = err as AxiosError<ErrorResponse>;
+      const errorMessage =
+        axiosError.response?.data?.message ||
+        "Terjadi kesalahan saat menolak permintaan";
+
+      Swal.fire({
+        icon: "error",
+        title: "Gagal Menolak",
+        text: errorMessage,
+        confirmButtonColor: "#000",
+      });
+    }
+  };
+
+  // Mengambil data penghuni dari backend
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      // Panggil API untuk mendapatkan data pengguna
+      const response = await axios.get(`${API_URL}/api/users`);
+
+      if (response.status === 200) {
+        setUsers(response.data);
+      } else {
+        throw new Error("Server responded with non-success status");
+      }
+    } catch (err) {
+      console.error("Error fetching users:", err);
+
+      // Tampilkan error menggunakan SweetAlert
+      const axiosError = err as AxiosError<ErrorResponse>;
+      const errorMessage =
+        axiosError.response?.data?.message ||
+        "Terjadi kesalahan saat mengambil data penghuni";
+
+      setError(errorMessage);
+
+      Swal.fire({
+        icon: "error",
+        title: "Gagal Mengambil Data",
+        text: errorMessage,
+        confirmButtonColor: "#000",
+      });
+
+      // Inisialisasi users sebagai array kosong, bukan data dummy
+      setUsers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   // Mengambil data pengguna dari backend
   // (Duplicate fetchUsers function removed)
 
   // Memuat data pengguna saat komponen terpasang
   useEffect(() => {
     fetchUsers();
+    fetchPendingRegistrations();
+
+    // Set up polling to check for new registration requests every minute
+    const intervalId = setInterval(fetchPendingRegistrations, 60000);
+
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId);
   }, []);
 
   // Filter pengguna berdasarkan kata kunci pencarian
@@ -367,7 +719,20 @@ const fetchUsers = async () => {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="flex flex-col gap-2 mb-4">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {/* Notification Bell */}
+          <button
+            className="relative p-2 bg-white rounded shadow"
+            onClick={() => setShowNotifications(!showNotifications)}
+          >
+            <Bell className="h-6 w-6" />
+            {notificationCount > 0 && (
+              <div className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                {notificationCount}
+              </div>
+            )}
+          </button>
+
           <input
             className="w-full border rounded px-3 py-2"
             placeholder="Cari penghuni..."
@@ -375,6 +740,83 @@ const fetchUsers = async () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+
+        {/* Notification Panel */}
+        {showNotifications && (
+          <div className="mt-2 bg-white rounded shadow-lg p-4 border max-h-96 overflow-y-auto">
+            <h3 className="font-bold mb-2">Permintaan Sewa Kamar</h3>
+            {pendingRequests.length === 0 ? (
+              <p className="text-gray-500">Tidak ada permintaan saat ini</p>
+            ) : (
+              <div className="space-y-3">
+                {pendingRequests.map((request) => (
+                  <div key={request.id} className="border p-3 rounded">
+                    <div className="flex justify-between">
+                      <div>
+                        <p>
+                          <span className="font-semibold">
+                            {request.username}
+                          </span>{" "}
+                          meminta sewa kamar
+                        </p>
+                        <p className="text-sm text-gray-600">{request.email}</p>
+                        {request.phoneNumber && (
+                          <p className="text-sm text-gray-600">
+                            Tel: {request.phoneNumber}
+                          </p>
+                        )}
+                      </div>
+                      <div className="bg-yellow-50 px-3 py-1 rounded">
+                        <p className="font-medium">
+                          Kamar: {request.roomNumber || request.requestedRoomId}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Tampilkan informasi sewa jika tersedia */}
+                    {request.durasiSewa && (
+                      <div className="mt-2 bg-gray-50 p-2 rounded text-sm">
+                        <div className="grid grid-cols-2 gap-2">
+                          <p>
+                            <span className="font-medium">Durasi:</span>{" "}
+                            {request.durasiSewa} bulan
+                          </p>
+                          <p>
+                            <span className="font-medium">Mulai:</span>{" "}
+                            {request.tanggalMulai}
+                          </p>
+                          <p>
+                            <span className="font-medium">Pembayaran:</span>{" "}
+                            {request.metodePembayaran}
+                          </p>
+                          <p>
+                            <span className="font-medium">Total:</span> Rp{" "}
+                            {request.totalPembayaran?.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-2 flex justify-end gap-2">
+                      <button
+                        className="bg-red-500 text-white px-3 py-1 rounded text-sm"
+                        onClick={() => handleRejectRequest(request.id)}
+                      >
+                        Tolak
+                      </button>
+                      <button
+                        className="bg-green-500 text-white px-3 py-1 rounded text-sm"
+                        onClick={() => handleApproveRequest(request.id)}
+                      >
+                        Terima
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {isLoading ? (

@@ -19,10 +19,27 @@ import {
   Send,
   AlertCircle,
 } from "lucide-react";
+import Swal from "sweetalert2";
 
 // Lazy load the PDF library since it's only used on form submission
 const importJsPDF = () => import("jspdf").then((module) => module.jsPDF);
 const importAutoTable = () => import("jspdf-autotable");
+
+// Interface for room registration request
+interface RoomRegistrationRequest {
+  id: string;
+  username: string;
+  email: string;
+  phoneNumber?: string;
+  requestedRoomId: string | number;
+  roomNumber: string;
+  durasiSewa: number;
+  tanggalMulai: string;
+  metodePembayaran: string;
+  totalPembayaran: number;
+  timestamp: number;
+  status: "pending";
+}
 
 interface DetailRoomProps {
   card: card;
@@ -391,11 +408,56 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
   // Optimize form submission to be non-blocking
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submitted"); // Tambahkan logging untuk debugging
+
+    // Log data form sebelum validasi
+    console.log("Form data:", formData);
 
     if (validateForm()) {
+      console.log("Form validation passed"); // Logging untuk debugging
       setIsSubmitting(true);
 
       try {
+        // Save form data to localStorage for admin approval
+        const request: RoomRegistrationRequest = {
+          id: `req-${Date.now()}`,
+          username: formData.fullName,
+          email: formData.email,
+          phoneNumber: formData.phone,
+          requestedRoomId: card.id,
+          roomNumber: card.nomorKamar,
+          durasiSewa: parseInt(formData.duration),
+          tanggalMulai: formData.moveInDate,
+          metodePembayaran: "transfer", // Default payment method
+          totalPembayaran:
+            card.hargaBulanan * (parseInt(formData.duration) + 1), // Include deposit
+          timestamp: Date.now(),
+          status: "pending",
+        };
+
+        console.log("Request object created:", request); // Tambahkan logging
+
+        // Get existing requests or initialize empty array
+        const existingRequests = JSON.parse(
+          localStorage.getItem("pendingRoomRequests") || "[]"
+        );
+        existingRequests.push(request);
+
+        // Save to localStorage
+        localStorage.setItem(
+          "pendingRoomRequests",
+          JSON.stringify(existingRequests)
+        );
+        console.log("Data saved to localStorage"); // Tambahkan logging
+
+        // Menampilkan notifikasi sukses secepatnya
+        Swal.fire({
+          icon: "success",
+          title: "Berhasil!",
+          text: "Permintaan pendaftaran dan penyewaan kamar Anda telah terkirim. Admin akan memprosesnya segera.",
+          confirmButtonColor: "#000",
+        });
+
         // Generate PDF in a non-blocking way
         setTimeout(async () => {
           try {
@@ -403,13 +465,16 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
             pdf.save(
               `Formulir_Sewa_Kamar_${card.nomorKamar}_${formData.fullName}.pdf`
             );
+            console.log("PDF generated and saved"); // Tambahkan logging
 
             // Open WhatsApp with the form data
             openWhatsApp();
+            console.log("WhatsApp opened"); // Tambahkan logging
 
             // Show success message
             setIsSubmitting(false);
             setShowSuccess(true);
+            console.log("Success state set to true"); // Tambahkan logging
 
             // Reset form after showing success
             setTimeout(() => {
@@ -424,19 +489,43 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
                 duration: "3",
                 additionalNotes: "",
               });
+              console.log("Form reset"); // Tambahkan logging
             }, 2000);
           } catch (error) {
             console.error("Error generating PDF:", error);
             setIsSubmitting(false);
             // Show error message to the user
-            alert(
-              "Maaf, terjadi kesalahan saat membuat PDF. Silakan coba lagi."
-            );
+            Swal.fire({
+              icon: "error",
+              title: "Error!",
+              text: "Maaf, terjadi kesalahan saat membuat PDF. Silakan coba lagi.",
+              confirmButtonColor: "#000",
+            });
           }
         }, 100);
       } catch (error) {
         console.error("Error during form submission:", error);
         setIsSubmitting(false);
+        // Tampilkan pesan error kepada pengguna
+        Swal.fire({
+          icon: "error",
+          title: "Error!",
+          text: "Terjadi kesalahan saat mengirim formulir. Silakan coba lagi.",
+          confirmButtonColor: "#000",
+        });
+      }
+    } else {
+      console.log("Form validation failed:", errors); // Logging error validasi
+
+      // Tampilkan pesan error validasi dalam satu notifikasi
+      const errorMessages = Object.values(errors).join("\n");
+      if (errorMessages) {
+        Swal.fire({
+          icon: "warning",
+          title: "Formulir Belum Lengkap",
+          text: "Harap lengkapi semua field yang diperlukan",
+          confirmButtonColor: "#000",
+        });
       }
     }
   };
@@ -703,7 +792,8 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
                   </h3>
                   <p className="text-gray-600 text-center mb-6">
                     Kami akan menghubungi Anda secepatnya untuk konfirmasi
-                    penyewaan.
+                    penyewaan. Pengajuan Anda telah masuk ke sistem dan menunggu
+                    persetujuan admin.
                   </p>
                 </div>
               ) : (
@@ -1023,6 +1113,10 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
                     className="w-full p-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-lg font-bold shadow-md hover:from-yellow-600 hover:to-yellow-700 transition-colors flex items-center justify-center gap-2"
                     whileHover={isMobile ? {} : { scale: 1.02 }}
                     whileTap={isMobile ? {} : { scale: 0.98 }}
+                    onClick={(e) => {
+                      console.log("Submit button clicked");
+                      handleSubmit(e);
+                    }}
                   >
                     {isSubmitting ? (
                       <>
@@ -1051,7 +1145,7 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
                     ) : (
                       <>
                         <Send size={18} />
-                        <span>Kirim Pengajuan Sewa via WhatsApp</span>
+                        <span>Kirim Pengajuan Sewa & Pendaftaran</span>
                       </>
                     )}
                   </motion.button>

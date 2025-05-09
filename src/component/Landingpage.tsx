@@ -34,6 +34,7 @@ import axios from "axios"; // Import axios for API calls
 import roomImage from "../component/image2/20250415_113110.jpg";
 // Import location background image from the same folder
 import locationImage from "../component/image2/20250415_113202.jpg";
+import Swal, { SweetAlertResult } from "sweetalert2";
 
 interface Card {
   id: string; // Change id type to string
@@ -45,6 +46,22 @@ interface Card {
   title: string; // Add title
   description: string; // Add description
   price: number; // Add price
+}
+
+// Add this type definition after the Card interface
+interface RoomRegistrationRequest {
+  id: string;
+  username: string;
+  email: string;
+  phoneNumber?: string; // Add phoneNumber field
+  requestedRoomId: string | number;
+  roomNumber: string; // Add roomNumber field
+  durasiSewa: number; // dalam bulan
+  tanggalMulai: string;
+  metodePembayaran: string;
+  totalPembayaran: number;
+  timestamp: number;
+  status: "pending";
 }
 
 // Add fallback data in case the API fails - this ensures content always appears
@@ -80,6 +97,180 @@ const fallbackRooms = [
     price: 800000,
   },
 ];
+
+// Update the saveRoomRegistrationRequest function to include room rental information
+const saveRoomRegistrationRequest = (
+  roomId: string | number,
+  roomNumber: string,
+  hargaBulanan: number
+) => {
+  // Check if user is logged in - this is a simplified example
+  // In a real app, you might check from your auth context or global state
+  const isLoggedIn = document.cookie.includes("isLoggedIn=true");
+
+  if (!isLoggedIn) {
+    // Show login required modal
+    Swal.fire({
+      title: "Login Diperlukan",
+      text: "Silakan login terlebih dahulu untuk mendaftar kamar",
+      icon: "info",
+      showCancelButton: true,
+      confirmButtonText: "Login",
+      cancelButtonText: "Batal",
+      confirmButtonColor: "#000",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Redirect to login page or show login modal
+        window.location.href = "/login";
+      }
+    });
+    return;
+  }
+
+  // Get today's date formatted as yyyy-mm-dd
+  const today = new Date().toISOString().split("T")[0];
+
+  // Show registration and rental form modal
+  Swal.fire({
+    title: `Daftar & Sewa Kamar ${roomNumber}`,
+    html: `
+      <div class="text-left mb-4">
+        <h3 class="font-bold text-lg mb-2">Data Penyewa</h3>
+        <input id="name" class="swal2-input w-full" placeholder="Nama Lengkap">
+        <input id="email" class="swal2-input w-full" placeholder="Email">
+        <input id="phone" class="swal2-input w-full" placeholder="Nomor Telepon (Opsional)">
+      </div>
+      <div class="text-left">
+        <h3 class="font-bold text-lg mb-2">Informasi Sewa</h3>
+        <div class="mb-2">
+          <label class="block text-sm text-gray-700">Durasi Sewa (Bulan)</label>
+          <select id="duration" class="swal2-input w-full">
+            <option value="1">1 Bulan</option>
+            <option value="3">3 Bulan</option>
+            <option value="6">6 Bulan</option>
+            <option value="12">12 Bulan</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="block text-sm text-gray-700">Tanggal Mulai</label>
+          <input type="date" id="startDate" class="swal2-input w-full" value="${today}" min="${today}">
+        </div>
+        <div class="mb-2">
+          <label class="block text-sm text-gray-700">Metode Pembayaran</label>
+          <select id="paymentMethod" class="swal2-input w-full">
+            <option value="transfer">Transfer Bank</option>
+            <option value="cash">Tunai</option>
+          </select>
+        </div>
+        <div class="mt-3 p-3 bg-yellow-50 rounded">
+          <p class="font-semibold">Harga per bulan: Rp ${hargaBulanan.toLocaleString()}</p>
+          <p id="totalPayment" class="font-bold text-lg">Total: Rp ${hargaBulanan.toLocaleString()}</p>
+        </div>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: "Daftar & Sewa",
+    cancelButtonText: "Batal",
+    confirmButtonColor: "#000",
+    width: 600,
+    didOpen: () => {
+      // Update total payment when duration changes
+      const durationSelect = document.getElementById(
+        "duration"
+      ) as HTMLSelectElement;
+      const updateTotal = () => {
+        const duration = parseInt(durationSelect.value);
+        const total = hargaBulanan * duration;
+        const totalElement = document.getElementById("totalPayment");
+        if (totalElement) {
+          totalElement.textContent = `Total: Rp ${total.toLocaleString()}`;
+        }
+      };
+
+      durationSelect.addEventListener("change", updateTotal);
+    },
+    preConfirm: () => {
+      const name = (document.getElementById("name") as HTMLInputElement).value;
+      const email = (document.getElementById("email") as HTMLInputElement)
+        .value;
+      const phone = (document.getElementById("phone") as HTMLInputElement)
+        .value;
+      const duration = parseInt(
+        (document.getElementById("duration") as HTMLSelectElement).value
+      );
+      const startDate = (
+        document.getElementById("startDate") as HTMLInputElement
+      ).value;
+      const paymentMethod = (
+        document.getElementById("paymentMethod") as HTMLSelectElement
+      ).value;
+
+      if (!name || !email) {
+        Swal.showValidationMessage("Harap isi nama dan email");
+        return false;
+      }
+
+      return {
+        name,
+        email,
+        phone,
+        duration,
+        startDate,
+        paymentMethod,
+        totalPayment: hargaBulanan * duration,
+      };
+    },
+  }).then(
+    (
+      result: SweetAlertResult<{
+        name: string;
+        email: string;
+        phone?: string;
+        duration: number;
+        startDate: string;
+        paymentMethod: string;
+        totalPayment: number;
+      }>
+    ) => {
+      if (result.isConfirmed && result.value) {
+        // Create registration request
+        const request: RoomRegistrationRequest = {
+          id: `req-${Date.now()}`,
+          username: result.value.name,
+          email: result.value.email,
+          phoneNumber: result.value.phone || "",
+          requestedRoomId: roomId,
+          roomNumber: roomNumber,
+          durasiSewa: result.value.duration,
+          tanggalMulai: result.value.startDate,
+          metodePembayaran: result.value.paymentMethod,
+          totalPembayaran: result.value.totalPayment,
+          timestamp: Date.now(),
+          status: "pending",
+        };
+
+        // Get existing requests or initialize empty array
+        const existingRequests = JSON.parse(
+          localStorage.getItem("pendingRoomRequests") || "[]"
+        );
+        existingRequests.push(request);
+
+        // Save to localStorage
+        localStorage.setItem(
+          "pendingRoomRequests",
+          JSON.stringify(existingRequests)
+        );
+
+        Swal.fire({
+          title: "Permintaan Terkirim!",
+          text: `Permintaan pendaftaran dan penyewaan kamar ${roomNumber} Anda telah dikirim. Admin akan memprosesnya segera.`,
+          icon: "success",
+          confirmButtonColor: "#000",
+        });
+      }
+    }
+  );
+};
 
 //card list
 const CardList = () => {
@@ -364,12 +555,15 @@ const RoomCard = ({
             Rp {item.hargaBulanan.toLocaleString("id-ID")}
             <span className="text-xs text-gray-500 font-normal">/bulan</span>
           </p>
-          <button
-            onClick={onSelect}
-            className="flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-yellow-700 bg-yellow-100 hover:bg-yellow-600 hover:text-white transition duration-300"
-          >
-            Detail <ArrowRight size={16} />
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onSelect}
+              className="flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-yellow-700 bg-yellow-100 hover:bg-yellow-600 hover:text-white transition duration-300"
+            >
+              Detail <ArrowRight size={16} />
+            </button>
+            {/* Hapus tombol "Daftar & Sewa" karena fungsionalitasnya akan digabung ke dalam form di DetailRoom */}
+          </div>
         </div>
       </div>
     </motion.div>
