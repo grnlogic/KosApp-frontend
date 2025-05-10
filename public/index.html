@@ -25,6 +25,40 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>MiminKost</title>
+    <!-- Add this meta tag to ensure proper mobile display -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+      /* Fix for mobile browser viewport height issues */
+      :root {
+        --vh: 1vh;
+      }
+      body {
+        min-height: 100vh;
+        min-height: calc(var(--vh, 1vh) * 100);
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+      }
+      /* Fix extra margin issues on mobile */
+      #root {
+        overflow-x: hidden;
+        width: 100%;
+      }
+      /* Add this to make sure modal overlays work properly */
+      .modal-open {
+        overflow: hidden !important;
+      }
+      /* Make sure popups are always on top */
+      .modal-popup {
+        z-index: 9999 !important;
+      }
+      /* Ensure navbar is hidden when modals are open */
+      body.overflow-hidden [class*="fixed top-0 w-full"] {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transform: translateY(-100%) !important;
+      }
+    </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

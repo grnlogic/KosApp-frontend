@@ -97,6 +97,29 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
     };
   }, []);
 
+  // Additional side effect to hide navbar when modal is open
+  useEffect(() => {
+    // Get the navbar element - targeting the fixed header with gradient background
+    const navbar = document.querySelector('[class*="fixed top-0 w-full px-4 py"][class*="from-yellow-400 to-yellow-500"]');
+    
+    if (navbar) {
+      // Save original style to restore later
+      const originalStyle = navbar.getAttribute('style') || '';
+      
+      // Hide navbar with higher specificty than existing styles
+      navbar.setAttribute('style', 'opacity: 0 !important; pointer-events: none !important; transform: translateY(-100%) !important;');
+      
+      // Add body class to prevent scrolling
+      document.body.classList.add('overflow-hidden');
+      
+      // Restore navbar visibility and body scrolling when component unmounts
+      return () => {
+        navbar.setAttribute('style', originalStyle);
+        document.body.classList.remove('overflow-hidden');
+      };
+    }
+  }, []);
+
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -591,43 +614,44 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
     setShowRentalForm(true);
   };
 
+  // Enhance the return section for better mobile display
   return (
     <motion.div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100]"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[150]" // Increased z-index to ensure it's above everything
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: isMobile ? 0.2 : 0.3 }} // Faster transitions on mobile
+      transition={{ duration: isMobile ? 0.2 : 0.3 }} 
       onClick={onClose}
     >
       <motion.div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden my-4"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden my-2 md:my-4"
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         transition={
           isMobile
-            ? { type: "tween", duration: 0.2 } // Simpler animation for mobile
+            ? { type: "tween", duration: 0.2 }
             : { type: "spring", damping: 25, stiffness: 300 }
         }
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
+        {/* Close button - more visible on mobile */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 bg-white rounded-full p-1.5 shadow-md hover:bg-gray-100 transition-colors"
+          className="absolute top-3 right-3 z-20 bg-white/90 rounded-full p-1.5 shadow-md hover:bg-gray-100 transition-colors"
         >
-          <X size={24} className="text-gray-700" />
+          <X size={22} className="text-gray-700" />
         </button>
 
-        {/* Image section with gradient overlay */}
-        <div className="relative h-64 md:h-80 w-full">
+        {/* Image section with gradient overlay - shorter on mobile */}
+        <div className="relative h-56 md:h-80 w-full">
           <img
             src={card.image}
             alt={`Kamar ${card.nomorKamar}`}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col justify-end p-6">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col justify-end p-4 md:p-6">
             <div className="flex items-center gap-2 mb-2">
               <span
                 className={`text-xs font-bold px-3 py-1 rounded-full ${
@@ -642,20 +666,20 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
                 Kamar {card.nomorKamar}
               </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white drop-shadow-sm">
+            <h1 className="text-xl md:text-3xl font-bold text-white drop-shadow-sm">
               {card.title || `Kamar ${card.nomorKamar}`}
             </h1>
           </div>
         </div>
 
-        {/* Content section */}
-        <div className="overflow-y-auto max-h-[calc(90vh-20rem)]">
-          <div className="p-6">
-            {/* Price banner */}
-            <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-4 rounded-xl mb-6 flex justify-between items-center">
+        {/* Content section - improve scrolling on mobile */}
+        <div className="overflow-y-auto max-h-[calc(90vh-14rem)] md:max-h-[calc(90vh-20rem)]">
+          <div className="p-4 md:p-6">
+            {/* Price banner - more compact on mobile */}
+            <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-3 md:p-4 rounded-xl mb-4 md:mb-6 flex justify-between items-center">
               <div>
-                <p className="text-sm font-medium opacity-90">Harga Bulanan</p>
-                <p className="text-2xl font-bold">
+                <p className="text-xs md:text-sm font-medium opacity-90">Harga Bulanan</p>
+                <p className="text-xl md:text-2xl font-bold">
                   Rp {formatPrice(card.hargaBulanan)}
                 </p>
               </div>
@@ -663,7 +687,7 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="bg-white text-yellow-600 px-4 py-2 rounded-lg font-bold shadow-md hover:bg-yellow-50 transition-colors"
+                  className="bg-white text-yellow-600 px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-bold shadow-md hover:bg-yellow-50 transition-colors text-sm md:text-base"
                   onClick={openRentalForm}
                 >
                   Sewa Sekarang
@@ -763,26 +787,26 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
           </div>
         </div>
 
-        {/* Footer Action */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+        {/* Footer Action - more compact on mobile */}
+        <div className="p-3 md:p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
           <div>
-            <p className="text-sm text-gray-500">Ada pertanyaan?</p>
-            <p className="text-yellow-600 font-medium">Hubungi kami</p>
+            <p className="text-xs md:text-sm text-gray-500">Ada pertanyaan?</p>
+            <p className="text-yellow-600 font-medium text-sm md:text-base">Hubungi kami</p>
           </div>
           <div className="flex gap-2">
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: isMobile ? 1.0 : 1.05 }}
+              whileTap={{ scale: isMobile ? 0.98 : 0.95 }}
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+              className="px-3 py-1.5 md:px-4 md:py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors text-sm md:text-base"
             >
               Tutup
             </motion.button>
             {card.status === "kosong" && (
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-lg font-medium shadow-md hover:from-yellow-600 hover:to-yellow-700 transition-colors"
+                whileHover={{ scale: isMobile ? 1.0 : 1.05 }}
+                whileTap={{ scale: isMobile ? 0.98 : 0.95 }}
+                className="px-3 py-1.5 md:px-4 md:py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-lg font-medium shadow-md hover:from-yellow-600 hover:to-yellow-700 transition-colors text-sm md:text-base"
                 onClick={openRentalForm}
               >
                 Sewa Sekarang

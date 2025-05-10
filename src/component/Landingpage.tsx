@@ -548,6 +548,19 @@ const CardList = () => {
     setVisibleCards((prevCount) => prevCount + 6);
   };
 
+  // Add function to handle card selection with nav hiding
+  const handleCardSelect = (card: Card) => {
+    setSelectedCard(card);
+    // Directly add class to body to prevent scrolling when modal opens
+    document.body.classList.add('overflow-hidden');
+  };
+  
+  // Add function to handle closing with nav restoration
+  const handleCloseModal = () => {
+    setSelectedCard(null);
+    document.body.classList.remove('overflow-hidden');
+  };
+
   // Better loading state with skeleton cards - now more visible
   if (isLoading) {
     return (
@@ -702,21 +715,21 @@ const CardList = () => {
   const displayedCards = cards.slice(0, visibleCards);
 
   return (
-    <div className="p-6">
+    <div className="p-3 md:p-6">
       {usingFallbackData && (
         <div className="mb-4 px-4 py-2 bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-lg">
           Menampilkan contoh kamar karena koneksi internet lambat
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
         {displayedCards.map((item, index) => (
           <RoomCard
             key={item.id}
             item={item}
             index={index}
             isMobile={isMobile}
-            onSelect={() => setSelectedCard(item)}
+            onSelect={() => handleCardSelect(item)} // Use the new handler
           />
         ))}
       </div>
@@ -740,7 +753,7 @@ const CardList = () => {
             ...selectedCard,
             image: roomImage,
           }}
-          onClose={() => setSelectedCard(null)}
+          onClose={handleCloseModal} // Use the new close handler
         />
       )}
     </div>
@@ -909,9 +922,10 @@ const LandingPage: React.FC = () => {
   const [displayedText, setDisplayedText] = useState(words[0]);
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(true); // Add loading state for the entire page
-
+  const [detailRoomOpen, setDetailRoomOpen] = useState(false);
+  
   // Create a computed state to track if any popup is open
-  const isAnyPopupOpen = showTentangKosApp || showComingSoon;
+  const isAnyPopupOpen = showTentangKosApp || showComingSoon || detailRoomOpen;
 
   // Detect mobile devices
   const [isMobile, setIsMobile] = useState(false);
@@ -919,24 +933,38 @@ const LandingPage: React.FC = () => {
   useEffect(() => {
     // Simple mobile detection
     const checkMobile = () => {
-      setIsMobile(
+      const isMobileDevice = 
         window.innerWidth < 768 ||
-          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-            navigator.userAgent
-          )
-      );
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        );
+      setIsMobile(isMobileDevice);
+      
+      // Apply specific mobile fixes when on mobile
+      if (isMobileDevice) {
+        // Fix viewport height issues on mobile browsers
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+        
+        // Ensure body fills entire screen on mobile
+        document.body.style.minHeight = '100vh';
+        document.body.style.minHeight = 'calc(var(--vh, 1vh) * 100)';
+        document.body.style.overflowX = 'hidden'; // Prevent horizontal scroll on mobile
+      }
     };
 
     checkMobile();
     window.addEventListener("resize", checkMobile);
+    window.addEventListener("orientationchange", checkMobile);
 
-    // Simulate loading time
+    // Simulate loading time - shorter on mobile for better UX
     const loadingTimer = setTimeout(() => {
       setIsPageLoading(false);
-    }, 1500); // Show loading for at least 1.5 seconds
+    }, isMobile ? 1000 : 1500); // Shorter loading time on mobile
 
     return () => {
       window.removeEventListener("resize", checkMobile);
+      window.removeEventListener("orientationchange", checkMobile);
       clearTimeout(loadingTimer);
     };
   }, []);
@@ -953,30 +981,102 @@ const LandingPage: React.FC = () => {
     return () => clearInterval(typingInterval);
   }, []);
 
-  return (
-    <div className="relative min-h-screen bg-gradient-to-b from-yellow-50 to-white">
-      {/* Simple gradient background - no particles, patterns, or animations */}
+  // Show attractive loading screen - enhanced for mobile
+  if (isPageLoading) {
+    return (
+      <div className="fixed inset-0 bg-gradient-to-b from-yellow-50 to-white flex flex-col items-center justify-center z-50 px-4">
+        <div className="w-20 h-20 relative mb-6">
+          {/* Animated circles */}
+          {[...Array(3)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute inset-0 rounded-full border-4 border-yellow-400"
+              initial={{ scale: 0.5, opacity: 0.3 }}
+              animate={{ 
+                scale: [0.5, 1, 0.5], 
+                opacity: [0.3, 0.8, 0.3],
+                borderWidth: ["4px", "2px", "4px"]
+              }}
+              transition={{ 
+                duration: 2,
+                repeat: Infinity, 
+                delay: i * 0.4,
+                ease: "easeInOut"
+              }}
+            />
+          ))}
+          
+          {/* Center icon */}
+          <motion.div 
+            className="absolute inset-0 flex items-center justify-center"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+          >
+            <Building className="w-10 h-10 text-yellow-600" />
+          </motion.div>
+        </div>
+        
+        <motion.h2 
+          className="text-xl font-bold text-yellow-600 mb-3"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          MIMIN KOST
+        </motion.h2>
+        
+        <motion.div
+          className="flex items-center space-x-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <span className="text-gray-600">Memuat halaman</span>
+          <div className="flex space-x-1">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="w-2 h-2 rounded-full bg-yellow-500"
+                animate={{ 
+                  scale: [1, 1.5, 1],
+                  opacity: [0.7, 1, 0.7]
+                }}
+                transition={{ 
+                  duration: 0.8, 
+                  repeat: Infinity, 
+                  delay: i * 0.2,
+                  repeatType: "reverse"
+                }}
+              />
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
-      {/* Header - Modified to completely hide when popups are open */}
+  return (
+    <div className="relative min-h-screen bg-gradient-to-b from-yellow-50 to-white overflow-x-hidden">
+      {/* Header - Modified for better mobile display */}
       <div
-        className={`fixed top-0 w-full px-4 py-4 bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-lg transition-all duration-200 ${
+        className={`fixed top-0 w-full px-4 py-3 bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-lg transition-all duration-200 ${
           isAnyPopupOpen
             ? "opacity-0 pointer-events-none transform -translate-y-full z-0"
             : "opacity-100 z-40"
         }`}
       >
         <div className="container mx-auto flex flex-col items-center">
-          <h1 className="font-extrabold text-3xl md:text-4xl text-white drop-shadow-md">
+          <h1 className="font-extrabold text-2xl md:text-4xl text-white drop-shadow-md">
             MIMIN KOST
           </h1>
-          <div className="h-8 flex items-center justify-center">
+          <div className="h-6 md:h-8 flex items-center justify-center">
             <motion.h2
               key={displayedText}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.5 }}
-              className="font-medium text-xl md:text-2xl text-white"
+              className="font-medium text-lg md:text-2xl text-white"
             >
               {displayedText}
             </motion.h2>
@@ -984,28 +1084,27 @@ const LandingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main content */}
-      <article className="relative z-10 container mx-auto px-4 py-8 md:py-16">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-3xl shadow-xl mb-16">
-          <div className="absolute -right-24 -top-24 w-64 h-64 rounded-full bg-yellow-300 opacity-30"></div>
-          <div className="absolute -left-24 -bottom-24 w-80 h-80 rounded-full bg-yellow-300 opacity-30"></div>
-          <div className="relative py-16 px-6 md:px-12 lg:px-20">
+      {/* Main content - adjusted padding for mobile */}
+      <article className="relative z-10 container mx-auto px-3 pt-20 pb-6 md:px-4 md:py-16">
+        {/* Hero Section - mobile optimized */}
+        <section className="relative overflow-hidden bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl md:rounded-3xl shadow-lg md:shadow-xl mb-8 md:mb-16">
+          <div className="absolute -right-24 -top-24 w-48 h-48 md:w-64 md:h-64 rounded-full bg-yellow-300 opacity-30"></div>
+          <div className="absolute -left-24 -bottom-24 w-64 h-64 md:w-80 md:h-80 rounded-full bg-yellow-300 opacity-30"></div>
+          <div className="relative py-8 md:py-16 px-4 md:px-6 lg:px-20">
             <motion.div
               className="max-w-2xl"
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6 leading-tight">
+              <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-4 md:mb-6 leading-tight">
                 Mudahkan Pengelolaan Kos Anda
               </h2>
-              <p className="text-lg md:text-xl text-white mb-8 opacity-90">
+              <p className="text-base md:text-xl text-white mb-6 md:mb-8 opacity-90">
                 Kos-App membantu Anda mengelola kamar, memantau hunian, dan
-                menangani pembayaran dalam satu platform. Sempurna untuk pemilik
-                dan pengelola properti kos.
+                menangani pembayaran dalam satu platform.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -1027,23 +1126,25 @@ const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        {/* Available Rooms Section */}
-        <section className="mb-16">
+        {/* Available Rooms Section - improved for mobile */}
+        <section className="mb-8 md:mb-16">
           <motion.div
-            className="text-center mb-10"
+            className="text-center mb-6 md:mb-10"
             initial={!isMobile ? { opacity: 0, y: 30 } : { opacity: 1 }}
             whileInView={!isMobile ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5 }}
           >
-            <h2 className="inline-block text-3xl md:text-4xl font-bold text-gray-800 mb-3 relative">
+            <h2 className="inline-block text-2xl md:text-4xl font-bold text-gray-800 mb-2 md:mb-3 relative">
               Kamar Tersedia
-              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-yellow-400 rounded-full"></div>
+              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-16 md:w-24 h-1 bg-yellow-400 rounded-full"></div>
             </h2>
-            <p className="text-lg text-gray-600 mt-4 max-w-2xl mx-auto">
+            <p className="text-base md:text-lg text-gray-600 mt-4 max-w-2xl mx-auto px-2">
               Lihat pilihan kamar kami dan temukan yang sesuai dengan kebutuhan
               Anda.
             </p>
           </motion.div>
+          
+          {/* This is where we render the CardList component */}
           <motion.div
             initial={!isMobile ? { opacity: 0, y: 30 } : { opacity: 1 }}
             whileInView={!isMobile ? { opacity: 1, y: 0 } : {}}
