@@ -100,22 +100,27 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
   // Additional side effect to hide navbar when modal is open
   useEffect(() => {
     // Get the navbar element - targeting the fixed header with gradient background
-    const navbar = document.querySelector('[class*="fixed top-0 w-full px-4 py"][class*="from-yellow-400 to-yellow-500"]');
-    
+    const navbar = document.querySelector(
+      '[class*="fixed top-0 w-full px-4 py"][class*="from-yellow-400 to-yellow-500"]'
+    );
+
     if (navbar) {
       // Save original style to restore later
-      const originalStyle = navbar.getAttribute('style') || '';
-      
+      const originalStyle = navbar.getAttribute("style") || "";
+
       // Hide navbar with higher specificty than existing styles
-      navbar.setAttribute('style', 'opacity: 0 !important; pointer-events: none !important; transform: translateY(-100%) !important;');
-      
+      navbar.setAttribute(
+        "style",
+        "opacity: 0 !important; pointer-events: none !important; transform: translateY(-100%) !important;"
+      );
+
       // Add body class to prevent scrolling
-      document.body.classList.add('overflow-hidden');
-      
+      document.body.classList.add("overflow-hidden");
+
       // Restore navbar visibility and body scrolling when component unmounts
       return () => {
-        navbar.setAttribute('style', originalStyle);
-        document.body.classList.remove('overflow-hidden');
+        navbar.setAttribute("style", originalStyle);
+        document.body.classList.remove("overflow-hidden");
       };
     }
   }, []);
@@ -621,7 +626,7 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: isMobile ? 0.2 : 0.3 }} 
+      transition={{ duration: isMobile ? 0.2 : 0.3 }}
       onClick={onClose}
     >
       <motion.div
@@ -678,7 +683,9 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
             {/* Price banner - more compact on mobile */}
             <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-3 md:p-4 rounded-xl mb-4 md:mb-6 flex justify-between items-center">
               <div>
-                <p className="text-xs md:text-sm font-medium opacity-90">Harga Bulanan</p>
+                <p className="text-xs md:text-sm font-medium opacity-90">
+                  Harga Bulanan
+                </p>
                 <p className="text-xl md:text-2xl font-bold">
                   Rp {formatPrice(card.hargaBulanan)}
                 </p>
@@ -791,7 +798,9 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
         <div className="p-3 md:p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
           <div>
             <p className="text-xs md:text-sm text-gray-500">Ada pertanyaan?</p>
-            <p className="text-yellow-600 font-medium text-sm md:text-base">Hubungi kami</p>
+            <p className="text-yellow-600 font-medium text-sm md:text-base">
+              Hubungi kami
+            </p>
           </div>
           <div className="flex gap-2">
             <motion.button

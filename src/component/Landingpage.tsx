@@ -552,13 +552,13 @@ const CardList = () => {
   const handleCardSelect = (card: Card) => {
     setSelectedCard(card);
     // Directly add class to body to prevent scrolling when modal opens
-    document.body.classList.add('overflow-hidden');
+    document.body.classList.add("overflow-hidden");
   };
-  
+
   // Add function to handle closing with nav restoration
   const handleCloseModal = () => {
     setSelectedCard(null);
-    document.body.classList.remove('overflow-hidden');
+    document.body.classList.remove("overflow-hidden");
   };
 
   // Better loading state with skeleton cards - now more visible
@@ -914,7 +914,7 @@ const Owner = () => {
   );
 };
 
-const words = ["Tempat nyaman", "Pilihan tepat", "Harga pas"];
+const words = ["Tempat nyaman", "Pilihan tepat", "Harga terjangkau"];
 
 const LandingPage: React.FC = () => {
   const [showTentangKosApp, setShowTentangKosApp] = useState(false);
@@ -923,7 +923,7 @@ const LandingPage: React.FC = () => {
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(true); // Add loading state for the entire page
   const [detailRoomOpen, setDetailRoomOpen] = useState(false);
-  
+
   // Create a computed state to track if any popup is open
   const isAnyPopupOpen = showTentangKosApp || showComingSoon || detailRoomOpen;
 
@@ -933,23 +933,23 @@ const LandingPage: React.FC = () => {
   useEffect(() => {
     // Simple mobile detection
     const checkMobile = () => {
-      const isMobileDevice = 
+      const isMobileDevice =
         window.innerWidth < 768 ||
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
           navigator.userAgent
         );
       setIsMobile(isMobileDevice);
-      
+
       // Apply specific mobile fixes when on mobile
       if (isMobileDevice) {
         // Fix viewport height issues on mobile browsers
         const vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
-        
+        document.documentElement.style.setProperty("--vh", `${vh}px`);
+
         // Ensure body fills entire screen on mobile
-        document.body.style.minHeight = '100vh';
-        document.body.style.minHeight = 'calc(var(--vh, 1vh) * 100)';
-        document.body.style.overflowX = 'hidden'; // Prevent horizontal scroll on mobile
+        document.body.style.minHeight = "100vh";
+        document.body.style.minHeight = "calc(var(--vh, 1vh) * 100)";
+        document.body.style.overflowX = "hidden"; // Prevent horizontal scroll on mobile
       }
     };
 
@@ -958,9 +958,12 @@ const LandingPage: React.FC = () => {
     window.addEventListener("orientationchange", checkMobile);
 
     // Simulate loading time - shorter on mobile for better UX
-    const loadingTimer = setTimeout(() => {
-      setIsPageLoading(false);
-    }, isMobile ? 1000 : 1500); // Shorter loading time on mobile
+    const loadingTimer = setTimeout(
+      () => {
+        setIsPageLoading(false);
+      },
+      isMobile ? 1000 : 1500
+    ); // Shorter loading time on mobile
 
     return () => {
       window.removeEventListener("resize", checkMobile);
@@ -992,22 +995,22 @@ const LandingPage: React.FC = () => {
               key={i}
               className="absolute inset-0 rounded-full border-4 border-yellow-400"
               initial={{ scale: 0.5, opacity: 0.3 }}
-              animate={{ 
-                scale: [0.5, 1, 0.5], 
+              animate={{
+                scale: [0.5, 1, 0.5],
                 opacity: [0.3, 0.8, 0.3],
-                borderWidth: ["4px", "2px", "4px"]
+                borderWidth: ["4px", "2px", "4px"],
               }}
-              transition={{ 
+              transition={{
                 duration: 2,
-                repeat: Infinity, 
+                repeat: Infinity,
                 delay: i * 0.4,
-                ease: "easeInOut"
+                ease: "easeInOut",
               }}
             />
           ))}
-          
+
           {/* Center icon */}
-          <motion.div 
+          <motion.div
             className="absolute inset-0 flex items-center justify-center"
             animate={{ rotate: 360 }}
             transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
@@ -1015,8 +1018,8 @@ const LandingPage: React.FC = () => {
             <Building className="w-10 h-10 text-yellow-600" />
           </motion.div>
         </div>
-        
-        <motion.h2 
+
+        <motion.h2
           className="text-xl font-bold text-yellow-600 mb-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -1024,7 +1027,7 @@ const LandingPage: React.FC = () => {
         >
           MIMIN KOST
         </motion.h2>
-        
+
         <motion.div
           className="flex items-center space-x-2"
           initial={{ opacity: 0 }}
@@ -1037,15 +1040,15 @@ const LandingPage: React.FC = () => {
               <motion.div
                 key={i}
                 className="w-2 h-2 rounded-full bg-yellow-500"
-                animate={{ 
+                animate={{
                   scale: [1, 1.5, 1],
-                  opacity: [0.7, 1, 0.7]
+                  opacity: [0.7, 1, 0.7],
                 }}
-                transition={{ 
-                  duration: 0.8, 
-                  repeat: Infinity, 
+                transition={{
+                  duration: 0.8,
+                  repeat: Infinity,
                   delay: i * 0.2,
-                  repeatType: "reverse"
+                  repeatType: "reverse",
                 }}
               />
             ))}
@@ -1086,7 +1089,7 @@ const LandingPage: React.FC = () => {
 
       {/* Main content - adjusted padding for mobile */}
       <article className="relative z-10 container mx-auto px-3 pt-20 pb-6 md:px-4 md:py-16">
-        {/* Hero Section - mobile optimized */}
+        {/* SECTION 1: Sambutan untuk pengguna baru */}
         <section className="relative overflow-hidden bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl md:rounded-3xl shadow-lg md:shadow-xl mb-8 md:mb-16">
           <div className="absolute -right-24 -top-24 w-48 h-48 md:w-64 md:h-64 rounded-full bg-yellow-300 opacity-30"></div>
           <div className="absolute -left-24 -bottom-24 w-64 h-64 md:w-80 md:h-80 rounded-full bg-yellow-300 opacity-30"></div>
@@ -1098,11 +1101,12 @@ const LandingPage: React.FC = () => {
               transition={{ duration: 0.8 }}
             >
               <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-4 md:mb-6 leading-tight">
-                Mudahkan Pengelolaan Kos Anda
+                Selamat Datang di Portal Kost Terbaik
               </h2>
               <p className="text-base md:text-xl text-white mb-6 md:mb-8 opacity-90">
-                Kos-App membantu Anda mengelola kamar, memantau hunian, dan
-                menangani pembayaran dalam satu platform.
+                Temukan hunian nyaman dan terjangkau untuk kebutuhan Anda. Kami
+                menyediakan berbagai pilihan kamar sesuai dengan keinginan dan
+                anggaran Anda.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                 <motion.button
@@ -1111,7 +1115,7 @@ const LandingPage: React.FC = () => {
                   className="px-6 py-3 bg-white text-yellow-600 rounded-full font-bold text-lg shadow-lg hover:bg-yellow-50 transition duration-300"
                   onClick={() => setShowComingSoon(true)}
                 >
-                  Daftar Sekarang
+                  Cari Kamar Sekarang
                 </motion.button>
                 <motion.button
                   onClick={() => setShowTentangKosApp(true)}
@@ -1119,14 +1123,14 @@ const LandingPage: React.FC = () => {
                   whileTap={{ scale: 0.95 }}
                   className="px-6 py-3 border-2 border-white text-white rounded-full font-bold text-lg shadow-lg hover:bg-white hover:text-yellow-600 transition duration-300"
                 >
-                  Pelajari Lebih Lanjut
+                  Pelajari Layanan Kami
                 </motion.button>
               </div>
             </motion.div>
           </div>
         </section>
 
-        {/* Available Rooms Section - improved for mobile */}
+        {/* SECTION 2: Promosi Mimin Kost */}
         <section className="mb-8 md:mb-16">
           <motion.div
             className="text-center mb-6 md:mb-10"
@@ -1135,15 +1139,98 @@ const LandingPage: React.FC = () => {
             transition={{ duration: 0.5 }}
           >
             <h2 className="inline-block text-2xl md:text-4xl font-bold text-gray-800 mb-2 md:mb-3 relative">
-              Kamar Tersedia
+              Mimin Kost - Mitra Unggulan
               <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-16 md:w-24 h-1 bg-yellow-400 rounded-full"></div>
             </h2>
             <p className="text-base md:text-lg text-gray-600 mt-4 max-w-2xl mx-auto px-2">
-              Lihat pilihan kamar kami dan temukan yang sesuai dengan kebutuhan
-              Anda.
+              Mimin Kost adalah hunian eksklusif yang bermitra dengan KosApp
+              untuk memberikan pengalaman menginap terbaik.
             </p>
           </motion.div>
-          
+
+          {/* Highlight Mimin Kost */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            <motion.div
+              className="bg-white rounded-xl shadow-lg overflow-hidden border border-yellow-100 p-6"
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="flex items-center gap-4 mb-4">
+                <div className="bg-yellow-100 p-3 rounded-full">
+                  <Home className="w-8 h-8 text-yellow-600" />
+                </div>
+                <h3 className="text-xl font-bold">Fasilitas Terbaik</h3>
+              </div>
+              <ul className="space-y-2 mb-4">
+                <li className="flex items-center gap-2">
+                  <Check size={18} className="text-green-500" />
+                  <span>WiFi kecepatan tinggi</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={18} className="text-green-500" />
+                  <span>Keamanan 24 jam</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={18} className="text-green-500" />
+                  <span>Area parkir luas</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={18} className="text-green-500" />
+                  <span>Ruang komunal nyaman</span>
+                </li>
+              </ul>
+            </motion.div>
+
+            <motion.div
+              className="bg-white rounded-xl shadow-lg overflow-hidden border border-yellow-100 p-6"
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="flex items-center gap-4 mb-4">
+                <div className="bg-yellow-100 p-3 rounded-full">
+                  <MapPinHouse className="w-8 h-8 text-yellow-600" />
+                </div>
+                <h3 className="text-xl font-bold">Lokasi Strategis</h3>
+              </div>
+              <ul className="space-y-2 mb-4">
+                <li className="flex items-center gap-2">
+                  <Check size={18} className="text-green-500" />
+                  <span>5 menit ke pusat kota</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={18} className="text-green-500" />
+                  <span>Dekat dengan kampus dan perkantoran</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={18} className="text-green-500" />
+                  <span>Akses transportasi mudah</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={18} className="text-green-500" />
+                  <span>Lingkungan tenang dan nyaman</span>
+                </li>
+              </ul>
+            </motion.div>
+          </div>
+
+          {/* Room List Heading */}
+          <motion.div
+            className="text-center mb-6 md:mb-10"
+            initial={!isMobile ? { opacity: 0, y: 30 } : { opacity: 1 }}
+            whileInView={!isMobile ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.5 }}
+          >
+            <h2 className="inline-block text-2xl md:text-4xl font-bold text-gray-800 mb-2 md:mb-3 relative">
+              Kamar Tersedia di Mimin Kost
+              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-16 md:w-24 h-1 bg-yellow-400 rounded-full"></div>
+            </h2>
+            <p className="text-base md:text-lg text-gray-600 mt-4 max-w-2xl mx-auto px-2">
+              Pilih kamar sesuai kebutuhan dan anggaran Anda.
+            </p>
+          </motion.div>
+
           {/* This is where we render the CardList component */}
           <motion.div
             initial={!isMobile ? { opacity: 0, y: 30 } : { opacity: 1 }}
@@ -1154,118 +1241,7 @@ const LandingPage: React.FC = () => {
           </motion.div>
         </section>
 
-        {/* Location Section */}
-        <section className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-3xl shadow-lg p-8 md:p-12 mb-16 overflow-hidden relative">
-          <div className="absolute inset-0 z-0">
-            <img
-              src={locationImage}
-              alt="Location background"
-              className="w-full h-full object-cover rounded-3xl opacity-20"
-            />
-          </div>
-          <div className="absolute -right-16 bottom-0 w-64 h-64 rounded-full bg-yellow-200 opacity-40"></div>
-
-          <motion.div
-            className="text-center mb-10 relative z-10"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <h2 className="inline-block text-3xl md:text-4xl font-bold text-gray-800 mb-3 relative">
-              Lokasi Kos
-              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-yellow-400 rounded-full"></div>
-            </h2>
-            <p className="text-lg text-gray-600 mt-4 max-w-2xl mx-auto">
-              Lokasi strategis dengan akses mudah ke berbagai fasilitas
-            </p>
-          </motion.div>
-          <motion.div
-            className="mt-8 relative z-10"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <div className="bg-white p-6 rounded-xl shadow-md">
-              <h5 className="font-bold text-2xl mb-3 text-gray-800">
-                Kos Nyaman Sejahtera
-              </h5>
-              <div className="flex items-start gap-3 text-gray-700 mb-6">
-                <MapPinHouse
-                  size={24}
-                  className="text-yellow-600 mt-1 flex-shrink-0"
-                />
-                <span className="text-lg">
-                  Jl. Merdeka No. 123, Kelurahan Sukamaju, Kecamatan Setiabudi,
-                  Jakarta Selatan, 12345
-                </span>
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-500 text-white rounded-full font-medium shadow-md hover:bg-yellow-600 transition duration-300"
-              >
-                Lihat Lokasi <ArrowRight size={16} />
-              </motion.button>
-            </div>
-          </motion.div>
-        </section>
-
-        {/* Owner Section */}
-        <section className="mb-16">
-          <motion.div
-            className="text-center mb-10"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <h2 className="inline-block text-3xl md:text-4xl font-bold text-gray-800 mb-3 relative">
-              Pemilik Kost
-              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-yellow-400 rounded-full"></div>
-            </h2>
-            <p className="text-lg text-gray-600 mt-4 max-w-2xl mx-auto">
-              Kenali pemilik kos dan cara menghubunginya.
-            </p>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <Owner />
-          </motion.div>
-        </section>
-
-        {/* Features Section */}
-        <section className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-3xl shadow-lg p-8 md:p-12 mb-16 overflow-hidden relative">
-          <div className="absolute -left-16 top-0 w-64 h-64 rounded-full bg-yellow-200 opacity-40"></div>
-          <div className="absolute -right-16 bottom-0 w-48 h-48 rounded-full bg-yellow-200 opacity-40"></div>
-
-          <motion.div
-            className="text-center mb-10 relative z-10"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <h2 className="inline-block text-3xl md:text-4xl font-bold text-gray-800 mb-3 relative">
-              Fitur Kos-App
-              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-yellow-400 rounded-full"></div>
-            </h2>
-            <p className="text-lg text-gray-600 mt-4 max-w-2xl mx-auto">
-              Temukan fitur-fitur canggih yang membuat Kos-App menjadi solusi
-              sempurna untuk manajemen kos.
-            </p>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="relative z-10"
-          >
-            <Fitur />
-          </motion.div>
-        </section>
-
-        {/* Footer CTA Section */}
+        {/* SECTION 3: Promosi KosApp Coming Soon */}
         <section className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-3xl shadow-xl p-8 md:p-12 mb-8 overflow-hidden relative">
           <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-yellow-300 opacity-30"></div>
           <div className="absolute -left-16 -bottom-16 w-64 h-64 rounded-full bg-yellow-300 opacity-30"></div>
@@ -1275,12 +1251,17 @@ const LandingPage: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
+            <div className="inline-flex items-center gap-2 px-4 py-1 bg-yellow-300 rounded-full text-yellow-800 font-medium mb-4">
+              <Clock size={16} />
+              <span>Segera Hadir</span>
+            </div>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-              Siap Bergabung dengan Kos-App? Daftar Sekarang
+              KosApp - Revolusi Pengelolaan Kost Modern
             </h2>
             <p className="text-lg text-white opacity-90 mb-8 max-w-2xl mx-auto">
-              Mulai perjalanan Anda dengan Kos-App hari ini dan rasakan
-              kemudahan dalam mengelola properti kos Anda.
+              KosApp adalah aplikasi inovatif yang menghubungkan pemilik kost
+              dengan penyewa potensial. Nikmati kemudahan pencarian, pembayaran,
+              dan pengelolaan properti kost dalam satu platform.
             </p>
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -1288,11 +1269,38 @@ const LandingPage: React.FC = () => {
               className="px-8 py-4 bg-white text-yellow-600 rounded-full font-bold text-lg shadow-lg hover:bg-yellow-50 transition duration-300"
               onClick={() => setShowComingSoon(true)}
             >
-              Daftar Sekarang
+              Daftar Minat
             </motion.button>
           </motion.div>
         </section>
 
+        {/* Fitur KosApp Section */}
+        <section className="mb-16">
+          <motion.div
+            className="text-center mb-10"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h2 className="inline-block text-3xl md:text-4xl font-bold text-gray-800 mb-3 relative">
+              Fitur Utama KosApp
+              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-yellow-400 rounded-full"></div>
+            </h2>
+            <p className="text-lg text-gray-600 mt-4 max-w-2xl mx-auto">
+              Nikmati berbagai fitur canggih yang akan mengubah cara Anda
+              mengelola dan menyewa properti kost
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <Fitur />
+          </motion.div>
+        </section>
+
+        {/* Modals */}
         <AnimatePresence>
           {showTentangKosApp && (
             <motion.div
@@ -1328,12 +1336,12 @@ const LandingPage: React.FC = () => {
                       <Info className="w-8 h-8 text-yellow-600" />
                     </div>
                     <h2 className="text-3xl md:text-4xl font-bold text-white">
-                      Tentang Kos-App
+                      Tentang KosApp
                     </h2>
                   </div>
                   <p className="text-white/90 text-lg max-w-2xl">
-                    Aplikasi manajemen kos modern untuk memudahkan pemilik dan
-                    pengelola kos.
+                    Aplikasi manajemen kost modern untuk memudahkan pemilik dan
+                    penyewa properti kost.
                   </p>
                 </div>
 
@@ -1352,9 +1360,9 @@ const LandingPage: React.FC = () => {
                           <Award className="w-6 h-6" /> Visi Kami
                         </h3>
                         <p className="text-gray-700">
-                          Menjadi solusi terdepan dalam pengelolaan properti kos
-                          yang efisien, transparan, dan menguntungkan bagi semua
-                          pihak.
+                          Menjadi solusi terdepan dalam pengelolaan properti
+                          kost yang efisien, transparan, dan menguntungkan bagi
+                          semua pihak.
                         </p>
                       </motion.div>
 
@@ -1369,10 +1377,10 @@ const LandingPage: React.FC = () => {
                         </h3>
                         <ul className="space-y-2">
                           {[
-                            "Antarmuka yang intuitif",
+                            "Antarmuka yang mudah digunakan",
                             "Pengelolaan pembayaran otomatis",
                             "Notifikasi real-time",
-                            "Laporan keuangan komprehensif",
+                            "Laporan keuangan lengkap",
                           ].map((item, i) => (
                             <motion.li
                               key={i}
@@ -1401,14 +1409,13 @@ const LandingPage: React.FC = () => {
                         transition={{ delay: 0.3 }}
                       >
                         <h3 className="text-xl font-bold text-gray-800 mb-3">
-                          Cerita Kami
+                          Latar Belakang
                         </h3>
                         <p className="text-gray-700">
-                          Kos-App lahir dari pemahaman mendalam tentang
-                          tantangan yang dihadapi oleh pemilik dan pengelola
-                          kos. Kami menciptakan solusi yang memudahkan
-                          pengelolaan properti dan meningkatkan pengalaman
-                          penghuni.
+                          KosApp lahir dari pemahaman mendalam tentang tantangan
+                          yang dihadapi oleh pemilik dan penghuni kost. Kami
+                          menciptakan solusi yang memudahkan pengelolaan
+                          properti dan meningkatkan pengalaman penghuni.
                         </p>
                       </motion.div>
 
@@ -1422,12 +1429,12 @@ const LandingPage: React.FC = () => {
                           Testimoni Pengguna
                         </h3>
                         <div className="italic text-gray-700 border-l-4 border-blue-200 pl-4 py-2">
-                          "Kos-App sangat membantu saya mengelola 3 properti kos
+                          "KosApp sangat membantu saya mengelola 3 properti kost
                           sekaligus. Pembayaran jadi tepat waktu dan komunikasi
                           dengan penghuni jadi lebih mudah."
                         </div>
                         <p className="text-right mt-2 text-sm font-medium">
-                          — Budi Setiawan, Pemilik Kos
+                          — Budi Setiawan, Pemilik Kost
                         </p>
                       </motion.div>
                     </div>
@@ -1439,7 +1446,7 @@ const LandingPage: React.FC = () => {
                         Punya pertanyaan? Hubungi kami
                       </p>
                       <p className="text-yellow-600 font-medium">
-                        support@kos-app.id
+                        support@kosapp.id
                       </p>
                     </div>
                     <motion.button
@@ -1451,7 +1458,7 @@ const LandingPage: React.FC = () => {
                         setShowComingSoon(true);
                       }}
                     >
-                      Daftar Sekarang <ChevronRight size={16} />
+                      Daftar Minat <ChevronRight size={16} />
                     </motion.button>
                   </div>
                 </div>
@@ -1524,7 +1531,7 @@ const LandingPage: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.5 }}
                 >
-                  Coming Soon!
+                  Segera Hadir!
                 </motion.h2>
                 <motion.p
                   className="text-lg text-gray-700 mb-8 text-center"
@@ -1532,9 +1539,9 @@ const LandingPage: React.FC = () => {
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.4, duration: 0.5 }}
                 >
-                  We're working hard to bring you something amazing. The
-                  registration feature will be available soon. Thank you for
-                  your patience!
+                  Kami sedang mempersiapkan layanan KosApp untuk memberikan
+                  pengalaman terbaik untuk Anda. Fitur pendaftaran akan segera
+                  tersedia. Terima kasih atas kesabaran Anda!
                 </motion.p>
 
                 {/* Stay updated button */}
@@ -1546,7 +1553,7 @@ const LandingPage: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6, duration: 0.5 }}
                 >
-                  Get Notified When We Launch
+                  Beri Tahu Saya Saat Diluncurkan
                 </motion.button>
               </div>
             </motion.div>
