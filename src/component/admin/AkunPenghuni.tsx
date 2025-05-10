@@ -79,21 +79,57 @@ export default function EditAkunPenghuni() {
   // Modify the fetchPendingRegistrations function to read from localStorage
   const fetchPendingRegistrations = async () => {
     try {
+      console.log("Fetching pending registrations...");
+
       // First try to get any existing API pending registrations
-      const response = await axios
-        .get(`${API_URL}/api/users/pending-registrations`)
-        .catch(() => ({ status: 404, data: [] }));
+      let apiRequests: User[] = [];
+      try {
+        const response = await axios.get(
+          `${API_URL}/api/room-requests/pending`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+
+        if (response.status === 200 && Array.isArray(response.data)) {
+          console.log("API pending requests:", response.data);
+          apiRequests = response.data;
+        }
+      } catch (apiError) {
+        console.warn("Error fetching API pending registrations:", apiError);
+        // Continue execution to at least show localStorage requests
+      }
 
       // Then get locally stored pending requests
       const localPendingRequests: PendingRegistrationRequest[] = JSON.parse(
         localStorage.getItem("pendingRoomRequests") || "[]"
       );
+      console.log("Local pending requests:", localPendingRequests);
 
       // Convert local requests to User format for consistency
+      // Perbaikan untuk menghandle nilai id yang bisa undefined atau bukan string
+      const safeIdConversion = (id: any) => {
+        // Jika id adalah string dan mengandung "req-", lakukan replace
+        if (typeof id === "string" && id.includes("req-")) {
+          return (
+            parseInt(id.replace("req-", "")) ||
+            Math.floor(Math.random() * 10000)
+          );
+        }
+        // Jika id adalah number, gunakan langsung
+        else if (typeof id === "number") {
+          return id;
+        }
+        // Jika undefined atau format lain, generate random ID
+        else {
+          return Math.floor(Math.random() * 10000);
+        }
+      };
+
       const localRequestsAsUsers: User[] = localPendingRequests.map((req) => ({
-        id:
-          parseInt(req.id.replace("req-", "")) ||
-          Math.floor(Math.random() * 10000),
+        id: safeIdConversion(req.id),
         username: req.username,
         email: req.email,
         phoneNumber: req.phoneNumber || "",
@@ -101,7 +137,7 @@ export default function EditAkunPenghuni() {
         role: "PENDING_USER",
         pendingRegistration: true,
         requestedRoomId: req.requestedRoomId,
-        // Salin properti tambahan untuk sewa
+        // Copy additional rental properties
         roomNumber: req.roomNumber,
         durasiSewa: req.durasiSewa,
         tanggalMulai: req.tanggalMulai,
@@ -109,16 +145,36 @@ export default function EditAkunPenghuni() {
         totalPembayaran: req.totalPembayaran,
       }));
 
-      // Combine API results with local storage results
-      const allPendingRequests =
-        response.status === 200
-          ? [...response.data, ...localRequestsAsUsers]
-          : localRequestsAsUsers;
+      // Combine API results with local storage results (avoiding duplicates)
+      let combinedRequests = [...apiRequests];
 
-      setPendingRequests(allPendingRequests);
-      setNotificationCount(allPendingRequests.length);
+      // Only add local requests that aren't already in the API requests
+      for (const localReq of localRequestsAsUsers) {
+        if (
+          !apiRequests.some(
+            (apiReq) =>
+              apiReq.email === localReq.email &&
+              apiReq.requestedRoomId === localReq.requestedRoomId
+          )
+        ) {
+          combinedRequests.push(localReq);
+        }
+      }
+
+      console.log("Combined pending requests:", combinedRequests);
+      setPendingRequests(combinedRequests);
+      setNotificationCount(combinedRequests.length);
+
+      // Animate the notification bell if there are new requests
+      if (combinedRequests.length > 0) {
+        const bell = document.querySelector(".notification-bell");
+        if (bell) {
+          bell.classList.add("animate-bounce");
+          setTimeout(() => bell.classList.remove("animate-bounce"), 1000);
+        }
+      }
     } catch (err) {
-      console.error("Error fetching pending registrations:", err);
+      console.error("Error in fetchPendingRegistrations:", err);
 
       // Fall back to just local storage data if API call fails
       try {
@@ -126,7 +182,6 @@ export default function EditAkunPenghuni() {
           localStorage.getItem("pendingRoomRequests") || "[]"
         );
 
-        // Convert to User format
         const localRequestsAsUsers: User[] = localPendingRequests.map(
           (req) => ({
             id:
@@ -139,7 +194,7 @@ export default function EditAkunPenghuni() {
             role: "PENDING_USER",
             pendingRegistration: true,
             requestedRoomId: req.requestedRoomId,
-            // Salin properti tambahan untuk sewa
+            // Copy additional properties
             roomNumber: req.roomNumber,
             durasiSewa: req.durasiSewa,
             tanggalMulai: req.tanggalMulai,
@@ -226,45 +281,44 @@ export default function EditAkunPenghuni() {
 
               // TODO: Ideally, we'd also save the rental information to a rentals table in the database
               // For now, we can just show a success message that includes the rental details
+              let successMessage = `Penghuni ${
+                isLocalRequest.username
+              } berhasil terdaftar untuk kamar ${
+                isLocalRequest.roomNumber || isLocalRequest.requestedRoomId
+              }`;
+              if (isLocalRequest.durasiSewa) {
+                successMessage += `\nDetail sewa: ${isLocalRequest.durasiSewa} bulan, mulai ${isLocalRequest.tanggalMulai}`;
+                successMessage += `\nTotal pembayaran: Rp ${isLocalRequest.totalPembayaran?.toLocaleString()}`;
+              }
+
+              Swal.fire({
+                icon: "success",
+                title: "Permintaan Diterima",
+                text: successMessage,
+                confirmButtonColor: "#000",
+              });
+
+              // Remove this request from localStorage
+              const localRequests = JSON.parse(
+                localStorage.getItem("pendingRoomRequests") || "[]"
+              );
+              const updatedRequests = localRequests.filter(
+                (req: PendingRegistrationRequest) => `req-${userId}` !== req.id
+              );
+              localStorage.setItem(
+                "pendingRoomRequests",
+                JSON.stringify(updatedRequests)
+              );
+
+              // Update state
+              setPendingRequests(
+                pendingRequests.filter((req) => req.id !== userId)
+              );
+              setNotificationCount((prev) => prev - 1);
+
+              // Refresh the user list
+              fetchUsers();
             }
-
-            // Remove this request from localStorage
-            const localRequests = JSON.parse(
-              localStorage.getItem("pendingRoomRequests") || "[]"
-            );
-            const updatedRequests = localRequests.filter(
-              (req: PendingRegistrationRequest) => `req-${userId}` !== req.id
-            );
-            localStorage.setItem(
-              "pendingRoomRequests",
-              JSON.stringify(updatedRequests)
-            );
-
-            // Update state
-            setPendingRequests(
-              pendingRequests.filter((req) => req.id !== userId)
-            );
-            setNotificationCount((prev) => prev - 1);
-
-            // Refresh the user list
-            fetchUsers();
-
-            let successMessage = `Penghuni ${
-              isLocalRequest.username
-            } berhasil terdaftar untuk kamar ${
-              isLocalRequest.roomNumber || isLocalRequest.requestedRoomId
-            }`;
-            if (isLocalRequest.durasiSewa) {
-              successMessage += `\nDetail sewa: ${isLocalRequest.durasiSewa} bulan, mulai ${isLocalRequest.tanggalMulai}`;
-              successMessage += `\nTotal pembayaran: Rp ${isLocalRequest.totalPembayaran?.toLocaleString()}`;
-            }
-
-            Swal.fire({
-              icon: "success",
-              title: "Permintaan Diterima",
-              text: successMessage,
-              confirmButtonColor: "#000",
-            });
           }
         } catch (error) {
           console.error("Error creating user from local request:", error);
@@ -278,9 +332,15 @@ export default function EditAkunPenghuni() {
         return;
       }
 
-      // Handle API-based requests normally
+      // Perbaiki endpoint dan tambahkan header Authorization
       const response = await axios.post(
-        `${API_URL}/api/users/${userId}/approve-registration`
+        `${API_URL}/api/room-requests/approve/${userId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
       );
 
       if (response.status === 200) {
@@ -300,12 +360,10 @@ export default function EditAkunPenghuni() {
       }
     } catch (err) {
       console.error("Error approving request:", err);
-
       const axiosError = err as AxiosError<ErrorResponse>;
       const errorMessage =
         axiosError.response?.data?.message ||
         "Terjadi kesalahan saat menyetujui permintaan";
-
       Swal.fire({
         icon: "error",
         title: "Gagal Menyetujui",
@@ -357,9 +415,15 @@ export default function EditAkunPenghuni() {
         return;
       }
 
-      // Handle API-based requests normally
+      // Ganti kode DELETE dengan POST ke endpoint yang benar
       const response = await axios.post(
-        `${API_URL}/api/users/${userId}/reject-registration`
+        `${API_URL}/api/room-requests/reject/${userId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
       );
 
       if (response.status === 200) {
@@ -375,7 +439,6 @@ export default function EditAkunPenghuni() {
       }
     } catch (err) {
       console.error("Error rejecting request:", err);
-
       const axiosError = err as AxiosError<ErrorResponse>;
       const errorMessage =
         axiosError.response?.data?.message ||
@@ -396,7 +459,6 @@ export default function EditAkunPenghuni() {
     try {
       // Panggil API untuk mendapatkan data pengguna
       const response = await axios.get(`${API_URL}/api/users`);
-
       if (response.status === 200) {
         setUsers(response.data);
       } else {
@@ -410,30 +472,22 @@ export default function EditAkunPenghuni() {
       const errorMessage =
         axiosError.response?.data?.message ||
         "Terjadi kesalahan saat mengambil data penghuni";
-
       setError(errorMessage);
-
       Swal.fire({
         icon: "error",
         title: "Gagal Mengambil Data",
         text: errorMessage,
         confirmButtonColor: "#000",
       });
-
-      // Inisialisasi users sebagai array kosong, bukan data dummy
-      setUsers([]);
     } finally {
       setIsLoading(false);
     }
   };
-  // Mengambil data pengguna dari backend
-  // (Duplicate fetchUsers function removed)
 
   // Memuat data pengguna saat komponen terpasang
   useEffect(() => {
     fetchUsers();
     fetchPendingRegistrations();
-
     // Set up polling to check for new registration requests every minute
     const intervalId = setInterval(fetchPendingRegistrations, 60000);
 
@@ -503,7 +557,6 @@ export default function EditAkunPenghuni() {
           if (response.status === 200) {
             // Remove user from local state
             setUsers(users.filter((u) => u.id !== user.id));
-
             Swal.fire({
               title: "Terhapus!",
               text: "Data penghuni telah dihapus.",
@@ -515,13 +568,11 @@ export default function EditAkunPenghuni() {
           }
         } catch (err) {
           console.error("Error deleting user:", err);
-
           // Get error message from API if available
           const axiosError = err as AxiosError<ErrorResponse>;
           const errorMessage =
             axiosError.response?.data?.message ||
             "Terjadi kesalahan saat menghapus data";
-
           Swal.fire({
             icon: "error",
             title: "Gagal menghapus data",
@@ -592,13 +643,11 @@ export default function EditAkunPenghuni() {
       }
     } catch (err) {
       console.error("Error updating user:", err);
-
       // Get error message from API if available
       const axiosError = err as AxiosError<ErrorResponse>;
       const errorMessage =
         axiosError.response?.data?.message ||
         "Terjadi kesalahan saat menyimpan perubahan";
-
       Swal.fire({
         icon: "error",
         title: "Gagal memperbarui data",
@@ -633,7 +682,6 @@ export default function EditAkunPenghuni() {
 
     // Validate password
     const errors = validatePassword(newPassword);
-
     if (errors.length > 0) {
       setPasswordErrors(errors);
       return;
@@ -677,13 +725,11 @@ export default function EditAkunPenghuni() {
       }
     } catch (err) {
       console.error("Error resetting password:", err);
-
       // Type check the error before accessing properties
       const axiosError = err as AxiosError<ErrorResponse>;
       const errorMessage =
         axiosError.response?.data?.message ||
         "Terjadi kesalahan saat menyimpan password baru";
-
       Swal.fire({
         icon: "error",
         title: "Gagal mereset password",
@@ -695,7 +741,6 @@ export default function EditAkunPenghuni() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!selectedUser) return;
-
     const { name, value } = e.target;
     setSelectedUser({
       ...selectedUser,
@@ -722,7 +767,7 @@ export default function EditAkunPenghuni() {
         <div className="flex gap-2 items-center">
           {/* Notification Bell */}
           <button
-            className="relative p-2 bg-white rounded shadow"
+            className="relative p-2 bg-white rounded shadow notification-bell"
             onClick={() => setShowNotifications(!showNotifications)}
           >
             <Bell className="h-6 w-6" />
@@ -744,7 +789,44 @@ export default function EditAkunPenghuni() {
         {/* Notification Panel */}
         {showNotifications && (
           <div className="mt-2 bg-white rounded shadow-lg p-4 border max-h-96 overflow-y-auto">
-            <h3 className="font-bold mb-2">Permintaan Sewa Kamar</h3>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-bold">Permintaan Sewa Kamar</h3>
+
+              {/* Add debug button */}
+              <button
+                className="text-xs bg-gray-100 px-2 py-1 rounded"
+                onClick={() => {
+                  // Show the raw data from localStorage for debugging
+                  const localData = localStorage.getItem("pendingRoomRequests");
+                  Swal.fire({
+                    title: "Debug: Stored Requests",
+                    html: `<pre class="text-left text-xs">${JSON.stringify(
+                      JSON.parse(localData || "[]"),
+                      null,
+                      2
+                    )}</pre>`,
+                    width: 800,
+                    confirmButtonText: "Refresh Data",
+                    showDenyButton: true, // Tambahkan tombol reset
+                    denyButtonText: "Hapus Semua Data",
+                    showCancelButton: true,
+                    cancelButtonText: "Tutup",
+                  }).then((result) => {
+                    if (result.isConfirmed) {
+                      fetchPendingRegistrations();
+                    }
+                    if (result.isDenied) {
+                      // Reset semua data permintaan sewa
+                      localStorage.removeItem("pendingRoomRequests");
+                      fetchPendingRegistrations();
+                      Swal.fire("Data telah dihapus", "", "success");
+                    }
+                  });
+                }}
+              >
+                Debug
+              </button>
+            </div>
             {pendingRequests.length === 0 ? (
               <p className="text-gray-500">Tidak ada permintaan saat ini</p>
             ) : (
@@ -780,7 +862,7 @@ export default function EditAkunPenghuni() {
                           <p>
                             <span className="font-medium">Durasi:</span>{" "}
                             {request.durasiSewa} bulan
-                          </p>
+                          </p>{" "}
                           <p>
                             <span className="font-medium">Mulai:</span>{" "}
                             {request.tanggalMulai}
@@ -796,7 +878,6 @@ export default function EditAkunPenghuni() {
                         </div>
                       </div>
                     )}
-
                     <div className="mt-2 flex justify-end gap-2">
                       <button
                         className="bg-red-500 text-white px-3 py-1 rounded text-sm"
@@ -870,20 +951,6 @@ export default function EditAkunPenghuni() {
         </div>
       )}
 
-      <div className="flex justify-center mt-6 gap-2">
-        {[1, 2, 3].map((n) => (
-          <button
-            key={n}
-            className={`w-8 h-8 rounded-full border ${
-              n === 1 ? "bg-black text-white" : "bg-white"
-            }`}
-            onClick={() => handlePageClick(n)}
-          >
-            {n}
-          </button>
-        ))}
-      </div>
-
       {/* Edit Popup */}
       {isEditPopupOpen && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -924,7 +991,6 @@ export default function EditAkunPenghuni() {
                   onChange={handleInputChange}
                 />
               </div>
-
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2">
                   Email
@@ -937,7 +1003,6 @@ export default function EditAkunPenghuni() {
                   onChange={handleInputChange}
                 />
               </div>
-
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2">
                   Nomor Telepon

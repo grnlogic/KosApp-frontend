@@ -29,6 +29,11 @@ import { fitur as fiturData } from "./App/Api/fitur";
 import TentangKosApp from "./TentangKosApp";
 import DetailRoom from "./DetailRoom";
 import axios from "axios"; // Import axios for API calls
+import {
+  authApi,
+  getAuthToken,
+  getUserIdFromCookieOrStorage,
+} from "../utils/apiUtils";
 
 // Import the room image that will be used for all cards
 import roomImage from "../component/image2/20250415_113110.jpg";
@@ -98,8 +103,22 @@ const fallbackRooms = [
   },
 ];
 
+// Add this function before saveRoomRegistrationRequest
+const checkApiConnection = async (): Promise<boolean> => {
+  try {
+    const response = await axios.get(
+      "https://manage-kost-production.up.railway.app/api/debug/ping",
+      { timeout: 5000 }
+    );
+    return response.status === 200;
+  } catch (error) {
+    console.warn("API connection check failed:", error);
+    return false;
+  }
+};
+
 // Update the saveRoomRegistrationRequest function to include room rental information
-const saveRoomRegistrationRequest = (
+const saveRoomRegistrationRequest = async (
   roomId: string | number,
   roomNumber: string,
   hargaBulanan: number
@@ -220,56 +239,198 @@ const saveRoomRegistrationRequest = (
         totalPayment: hargaBulanan * duration,
       };
     },
-  }).then(
-    (
-      result: SweetAlertResult<{
-        name: string;
-        email: string;
-        phone?: string;
-        duration: number;
-        startDate: string;
-        paymentMethod: string;
-        totalPayment: number;
-      }>
-    ) => {
-      if (result.isConfirmed && result.value) {
-        // Create registration request
-        const request: RoomRegistrationRequest = {
-          id: `req-${Date.now()}`,
-          username: result.value.name,
-          email: result.value.email,
-          phoneNumber: result.value.phone || "",
-          requestedRoomId: roomId,
-          roomNumber: roomNumber,
-          durasiSewa: result.value.duration,
-          tanggalMulai: result.value.startDate,
-          metodePembayaran: result.value.paymentMethod,
-          totalPembayaran: result.value.totalPayment,
-          timestamp: Date.now(),
-          status: "pending",
-        };
+  }).then(async (result) => {
+    if (result.isConfirmed && result.value) {
+      // Show loading indicator
+      Swal.fire({
+        title: "Memproses...",
+        html: "Memeriksa koneksi dan mengirim permintaan",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
 
-        // Get existing requests or initialize empty array
+      // First check if API is reachable
+      const isApiReachable = await checkApiConnection();
+
+      // Create registration request
+      const request: RoomRegistrationRequest = {
+        id: `req-${Date.now()}`,
+        username: result.value.name,
+        email: result.value.email,
+        phoneNumber: result.value.phone || "",
+        requestedRoomId: roomId,
+        roomNumber: roomNumber,
+        durasiSewa: result.value.duration,
+        tanggalMulai: result.value.startDate,
+        metodePembayaran: result.value.paymentMethod,
+        totalPembayaran: result.value.totalPayment,
+        timestamp: Date.now(),
+        status: "pending",
+      };
+
+      if (!isApiReachable) {
+        // If API is not reachable, store locally and inform user
         const existingRequests = JSON.parse(
           localStorage.getItem("pendingRoomRequests") || "[]"
         );
         existingRequests.push(request);
-
-        // Save to localStorage
         localStorage.setItem(
           "pendingRoomRequests",
           JSON.stringify(existingRequests)
         );
 
         Swal.fire({
-          title: "Permintaan Terkirim!",
-          text: `Permintaan pendaftaran dan penyewaan kamar ${roomNumber} Anda telah dikirim. Admin akan memprosesnya segera.`,
-          icon: "success",
+          title: "Koneksi Server Gagal",
+          text: "Server tidak dapat dijangkau. Permintaan Anda telah disimpan secara lokal dan akan dikirim ke admin saat koneksi kembali normal.",
+          icon: "warning",
           confirmButtonColor: "#000",
         });
+        return;
       }
+
+      // Get token from cookies or localStorage if needed
+      const token = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("authToken="))
+        ?.split("=")[1];
+
+      const userId = getLocalUserId();
+
+      if (!userId) {
+        // Close loading indicator if no userId found
+        Swal.close();
+        Swal.fire({
+          title: "Error",
+          text: "User ID tidak ditemukan. Silakan login ulang.",
+          icon: "error",
+          confirmButtonColor: "#000",
+        });
+        return;
+      }
+
+      // Add timeout and better error handling for the request
+      authApi
+        .post(
+          "/room-requests/request",
+          {
+            roomId: roomId,
+            durasiSewa: result.value.duration,
+            tanggalMulai: result.value.startDate,
+            metodePembayaran: result.value.paymentMethod,
+          },
+          {
+            headers: {
+              userId: userId,
+            },
+          }
+        )
+        .then((response) => {
+          console.log("Room request response:", response.data);
+          // Always close the loading indicator
+          Swal.close();
+
+          Swal.fire({
+            title: "Permintaan Terkirim!",
+            text: `Permintaan pendaftaran dan penyewaan kamar ${roomNumber} Anda telah dikirim. Admin akan memprosesnya segera.`,
+            icon: "success",
+            confirmButtonColor: "#000",
+          });
+        })
+        .catch((error) => {
+          // Always close the loading indicator
+          Swal.close();
+          console.error("Error sending room request:", error);
+
+          let errorMessage = "Koneksi gagal";
+
+          if (error.response) {
+            // The server responded with a status code outside of 2xx range
+            errorMessage =
+              error.response.data?.message ||
+              `Error ${error.response.status}: Permintaan tidak dapat diproses`;
+          } else if (error.request) {
+            // The request was made but no response was received
+            errorMessage = "Server tidak merespon, silakan coba lagi nanti";
+            if (error.code === "ECONNABORTED") {
+              errorMessage = "Koneksi timeout, silakan coba lagi nanti";
+            }
+          } else {
+            // Something happened in setting up the request
+            errorMessage = error.message || "Terjadi kesalahan";
+          }
+
+          Swal.fire({
+            title: "Gagal Mengirim Permintaan",
+            text: errorMessage,
+            icon: "error",
+            confirmButtonColor: "#000",
+          });
+
+          // For debugging - store the failed request in localStorage
+          const failedRequests = JSON.parse(
+            localStorage.getItem("failedRoomRequests") || "[]"
+          );
+          failedRequests.push({
+            request,
+            error: {
+              message: errorMessage,
+              detail: error.toString(),
+              timestamp: new Date().toISOString(),
+            },
+          });
+          localStorage.setItem(
+            "failedRoomRequests",
+            JSON.stringify(failedRequests)
+          );
+        });
+
+      // Add a safety timeout to ensure loading state never gets stuck
+      setTimeout(() => {
+        if (Swal.isLoading()) {
+          Swal.close();
+          Swal.fire({
+            title: "Timeout",
+            text: "Permintaan membutuhkan waktu terlalu lama. Silakan coba lagi nanti.",
+            icon: "warning",
+            confirmButtonColor: "#000",
+          });
+        }
+      }, 15000); // 15 seconds safety timeout
     }
-  );
+  });
+};
+
+// Helper function to get user ID from cookie or storage
+const getLocalUserId = (): number | null => {
+  // Try to get from localStorage first
+  const userDataStr = localStorage.getItem("userData");
+  if (userDataStr) {
+    try {
+      const userData = JSON.parse(userDataStr);
+      if (userData.userId) return userData.userId;
+    } catch (e) {
+      console.error("Error parsing userData from localStorage:", e);
+    }
+  }
+
+  // Try to extract from JWT if available
+  const token = getAuthToken();
+
+  if (token) {
+    try {
+      // Simple JWT payload extraction - not for production
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const payload = JSON.parse(window.atob(base64));
+      return payload.userId || null;
+    } catch (e) {
+      console.error("Error extracting userId from token:", e);
+    }
+  }
+
+  return null;
 };
 
 //card list
@@ -293,7 +454,6 @@ const CardList = () => {
         );
       setIsMobile(isMobileDevice);
 
-      // Set a shorter timeout for mobile devices
       return isMobileDevice;
     };
 
@@ -392,26 +552,113 @@ const CardList = () => {
   if (isLoading) {
     return (
       <div className="p-6">
-        <div className="mb-4 text-center text-sm text-gray-500">
-          Memuat data kamar...
+        <div className="mb-4 text-center">
+          <motion.div
+            className="inline-flex items-center gap-2 py-2 px-4 bg-yellow-100 rounded-full text-yellow-700 font-medium"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            >
+              <Clock size={18} className="text-yellow-600" />
+            </motion.div>
+            <span>Memuat data kamar...</span>
+          </motion.div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[...Array(isMobile ? 2 : 3)].map((_, index) => (
-            <div
+            <motion.div
               key={index}
-              className="bg-white rounded-xl shadow-lg overflow-hidden border border-yellow-100 animate-pulse"
+              className="bg-white rounded-xl shadow-lg overflow-hidden border border-yellow-100"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              <div className="h-56 bg-gray-200"></div>
-              <div className="p-5">
-                <div className="h-6 bg-gray-200 rounded w-2/3 mb-3"></div>
-                <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-5/6 mb-4"></div>
-                <div className="flex justify-between items-center">
-                  <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-                  <div className="h-10 bg-gray-200 rounded w-1/4"></div>
+              <div className="h-56 bg-gradient-to-r from-gray-100 to-gray-200 relative overflow-hidden">
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent"
+                  initial={{ x: "-100%" }}
+                  animate={{ x: "100%" }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 1.5,
+                    ease: "linear",
+                  }}
+                />
+              </div>
+              <div className="p-5 space-y-3">
+                <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-100 rounded w-2/3 relative overflow-hidden">
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent"
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "100%" }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 1.5,
+                      ease: "linear",
+                      delay: 0.2,
+                    }}
+                  />
+                </div>
+                <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-100 rounded w-full relative overflow-hidden">
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent"
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "100%" }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 1.5,
+                      ease: "linear",
+                      delay: 0.3,
+                    }}
+                  />
+                </div>
+                <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-100 rounded w-5/6 relative overflow-hidden">
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent"
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "100%" }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 1.5,
+                      ease: "linear",
+                      delay: 0.4,
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between items-center pt-2">
+                  <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-100 rounded w-1/3 relative overflow-hidden">
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent"
+                      initial={{ x: "-100%" }}
+                      animate={{ x: "100%" }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 1.5,
+                        ease: "linear",
+                        delay: 0.5,
+                      }}
+                    />
+                  </div>
+                  <div className="h-10 bg-gradient-to-r from-gray-200 to-gray-100 rounded w-1/4 relative overflow-hidden">
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent"
+                      initial={{ x: "-100%" }}
+                      animate={{ x: "100%" }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 1.5,
+                        ease: "linear",
+                        delay: 0.6,
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -661,6 +908,7 @@ const LandingPage: React.FC = () => {
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState(words[0]);
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true); // Add loading state for the entire page
 
   // Create a computed state to track if any popup is open
   const isAnyPopupOpen = showTentangKosApp || showComingSoon;
@@ -681,7 +929,16 @@ const LandingPage: React.FC = () => {
 
     checkMobile();
     window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+
+    // Simulate loading time
+    const loadingTimer = setTimeout(() => {
+      setIsPageLoading(false);
+    }, 1500); // Show loading for at least 1.5 seconds
+
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+      clearTimeout(loadingTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -702,7 +959,7 @@ const LandingPage: React.FC = () => {
 
       {/* Header - Modified to completely hide when popups are open */}
       <div
-        className={` top-0 w-full px-4 py-4 bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-lg transition-all duration-200 ${
+        className={`fixed top-0 w-full px-4 py-4 bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-lg transition-all duration-200 ${
           isAnyPopupOpen
             ? "opacity-0 pointer-events-none transform -translate-y-full z-0"
             : "opacity-100 z-40"
@@ -733,7 +990,6 @@ const LandingPage: React.FC = () => {
         <section className="relative overflow-hidden bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-3xl shadow-xl mb-16">
           <div className="absolute -right-24 -top-24 w-64 h-64 rounded-full bg-yellow-300 opacity-30"></div>
           <div className="absolute -left-24 -bottom-24 w-80 h-80 rounded-full bg-yellow-300 opacity-30"></div>
-
           <div className="relative py-16 px-6 md:px-12 lg:px-20">
             <motion.div
               className="max-w-2xl"
@@ -912,7 +1168,6 @@ const LandingPage: React.FC = () => {
         <section className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-3xl shadow-xl p-8 md:p-12 mb-8 overflow-hidden relative">
           <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-yellow-300 opacity-30"></div>
           <div className="absolute -left-16 -bottom-16 w-64 h-64 rounded-full bg-yellow-300 opacity-30"></div>
-
           <motion.div
             className="relative z-10 text-center"
             initial={{ opacity: 0, y: 30 }}
@@ -920,7 +1175,7 @@ const LandingPage: React.FC = () => {
             transition={{ duration: 0.5 }}
           >
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-              Siap Bergabung dengan Kos-App?
+              Siap Bergabung dengan Kos-App? Daftar Sekarang
             </h2>
             <p className="text-lg text-white opacity-90 mb-8 max-w-2xl mx-auto">
               Mulai perjalanan Anda dengan Kos-App hari ini dan rasakan
@@ -1170,7 +1425,6 @@ const LandingPage: React.FC = () => {
                 >
                   Coming Soon!
                 </motion.h2>
-
                 <motion.p
                   className="text-lg text-gray-700 mb-8 text-center"
                   initial={{ opacity: 0 }}

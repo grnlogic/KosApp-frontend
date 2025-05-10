@@ -1,5 +1,6 @@
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { card } from "./App/Api/card";
+
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -20,6 +21,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Swal from "sweetalert2";
+import axios from "axios";
+import { authApi } from "../utils/apiUtils";
 
 // Lazy load the PDF library since it's only used on form submission
 const importJsPDF = () => import("jspdf").then((module) => module.jsPDF);
@@ -408,124 +411,178 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
   // Optimize form submission to be non-blocking
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted"); // Tambahkan logging untuk debugging
-
-    // Log data form sebelum validasi
-    console.log("Form data:", formData);
 
     if (validateForm()) {
-      console.log("Form validation passed"); // Logging untuk debugging
       setIsSubmitting(true);
 
       try {
-        // Save form data to localStorage for admin approval
-        const request: RoomRegistrationRequest = {
-          id: `req-${Date.now()}`,
-          username: formData.fullName,
-          email: formData.email,
-          phoneNumber: formData.phone,
-          requestedRoomId: card.id,
-          roomNumber: card.nomorKamar,
+        // 1. Cek dulu apakah user dengan nomor telepon atau email tersebut ada di sistem
+        let userVerified = false;
+        let verifiedUserId = null;
+
+        try {
+          // Gunakan endpoint users untuk mencari user berdasarkan nomor telepon atau email
+          const usersResponse = await authApi.get("/users");
+          const users = usersResponse.data || [];
+
+          console.log("Data yang diterima dari API:", users);
+          console.log("Email form:", formData.email);
+          console.log("Nomor telepon form:", formData.phone);
+
+          // Cari user dengan nomor telepon atau email yang sesuai
+          const matchingUser = users.find(
+            (user: { phone_number: any; email: string }) => {
+              // Normalisasi nomor telepon (menghilangkan +62, 62, atau 0 di depan)
+              const normalizedDBPhone = (user.phone_number || "").replace(
+                /^(\+62|62|0)/,
+                ""
+              );
+              const normalizedInputPhone = formData.phone.replace(
+                /^(\+62|62|0)/,
+                ""
+              );
+
+              // Pencocokan berdasarkan nomor telepon ATAU email
+              const phoneMatch = normalizedDBPhone === normalizedInputPhone;
+              const emailMatch =
+                user.email &&
+                user.email.toLowerCase() === formData.email.toLowerCase();
+
+              // Log untuk debugging
+              if (phoneMatch || emailMatch) {
+                console.log("Pencocokan ditemukan:", {
+                  user,
+                  phoneMatch,
+                  emailMatch,
+                });
+              }
+
+              return phoneMatch || emailMatch;
+            }
+          );
+
+          if (matchingUser) {
+            userVerified = true;
+            verifiedUserId = matchingUser.id;
+            console.log("User diverifikasi:", matchingUser);
+          } else {
+            console.log(
+              "Tidak ditemukan pengguna dengan nomor telepon atau email tersebut"
+            );
+          }
+        } catch (verifyError) {
+          console.warn("Gagal memverifikasi data pengguna:", verifyError);
+        }
+
+        // 2. Jika user tidak terverifikasi, tampilkan pesan
+        if (!userVerified || !verifiedUserId) {
+          Swal.fire({
+            icon: "warning",
+            title: "Verifikasi Gagal",
+            text: "Nomor telepon atau email tidak cocok dengan data yang terdaftar. Pastikan Anda menggunakan nomor telepon dan email yang sama seperti saat pendaftaran.",
+            confirmButtonText: "Kirim dengan WhatsApp",
+            showCancelButton: true,
+            cancelButtonText: "Batal",
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // Jika user memilih kirim via WhatsApp saja
+              openWhatsApp();
+            }
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        // 3. Jika user terverifikasi, kirimkan pendaftaran sebagai pending request untuk di-review admin
+        const requestData = {
+          userId: verifiedUserId,
+          roomId: card.id,
           durasiSewa: parseInt(formData.duration),
           tanggalMulai: formData.moveInDate,
-          metodePembayaran: "transfer", // Default payment method
-          totalPembayaran:
-            card.hargaBulanan * (parseInt(formData.duration) + 1), // Include deposit
-          timestamp: Date.now(),
-          status: "pending",
+          metodePembayaran: "transfer",
+          status: "pending", // Tambahkan status pending secara eksplisit
         };
 
-        console.log("Request object created:", request); // Tambahkan logging
-
-        // Get existing requests or initialize empty array
-        const existingRequests = JSON.parse(
-          localStorage.getItem("pendingRoomRequests") || "[]"
+        // Gunakan endpoint yang lebih tepat untuk permintaan yang memerlukan review admin
+        const response = await authApi.post(
+          `/room-requests/request?userId=${verifiedUserId}`, // Gunakan endpoint khusus untuk permintaan pending
+          requestData
         );
-        existingRequests.push(request);
 
-        // Save to localStorage
-        localStorage.setItem(
-          "pendingRoomRequests",
-          JSON.stringify(existingRequests)
-        );
-        console.log("Data saved to localStorage"); // Tambahkan logging
+        console.log("Permintaan sewa kamar terkirim:", response.data);
 
-        // Menampilkan notifikasi sukses secepatnya
+        // Simpan data tambahan untuk UI/notifikasi lokal
+        try {
+          // Simpan data lengkap untuk notifikasi lokal
+          const fullRequestData = {
+            id: `req-${Date.now()}`,
+            userId: verifiedUserId,
+            username: formData.fullName,
+            email: formData.email,
+            phoneNumber: formData.phone,
+            requestedRoomId: card.id.toString(),
+            roomNumber: card.nomorKamar,
+            durasiSewa: parseInt(formData.duration),
+            tanggalMulai: formData.moveInDate,
+            metodePembayaran: "transfer",
+            totalPembayaran:
+              card.hargaBulanan * (parseInt(formData.duration) + 1),
+            timestamp: Date.now(),
+            status: "pending",
+          };
+
+          const existingRequests = JSON.parse(
+            localStorage.getItem("pendingRoomRequests") || "[]"
+          );
+
+          existingRequests.push(fullRequestData);
+
+          localStorage.setItem(
+            "pendingRoomRequests",
+            JSON.stringify(existingRequests)
+          );
+
+          console.log(
+            "Data permintaan disimpan untuk review admin:",
+            fullRequestData.id
+          );
+        } catch (storageError) {
+          console.error(
+            "Gagal menyimpan data tambahan ke localStorage:",
+            storageError
+          );
+        }
+
+        // 4. Tampilkan pesan sukses yang menjelaskan bahwa permintaan menunggu persetujuan admin
         Swal.fire({
+          title: "Permintaan Terkirim!",
+          text: `Permintaan penyewaan kamar ${card.nomorKamar} berhasil dikirim. Admin akan mereview permintaan Anda, mohon tunggu konfirmasi selanjutnya.`,
           icon: "success",
-          title: "Berhasil!",
-          text: "Permintaan pendaftaran dan penyewaan kamar Anda telah terkirim. Admin akan memprosesnya segera.",
           confirmButtonColor: "#000",
         });
 
-        // Generate PDF in a non-blocking way
-        setTimeout(async () => {
-          try {
-            const pdf = await generatePDF();
-            pdf.save(
-              `Formulir_Sewa_Kamar_${card.nomorKamar}_${formData.fullName}.pdf`
-            );
-            console.log("PDF generated and saved"); // Tambahkan logging
-
-            // Open WhatsApp with the form data
-            openWhatsApp();
-            console.log("WhatsApp opened"); // Tambahkan logging
-
-            // Show success message
-            setIsSubmitting(false);
-            setShowSuccess(true);
-            console.log("Success state set to true"); // Tambahkan logging
-
-            // Reset form after showing success
-            setTimeout(() => {
-              setShowRentalForm(false);
-              setShowSuccess(false);
-              setFormData({
-                fullName: "",
-                phone: "",
-                email: "",
-                idNumber: "",
-                moveInDate: "",
-                duration: "3",
-                additionalNotes: "",
-              });
-              console.log("Form reset"); // Tambahkan logging
-            }, 2000);
-          } catch (error) {
-            console.error("Error generating PDF:", error);
-            setIsSubmitting(false);
-            // Show error message to the user
-            Swal.fire({
-              icon: "error",
-              title: "Error!",
-              text: "Maaf, terjadi kesalahan saat membuat PDF. Silakan coba lagi.",
-              confirmButtonColor: "#000",
-            });
-          }
-        }, 100);
+        setShowSuccess(true);
       } catch (error) {
-        console.error("Error during form submission:", error);
-        setIsSubmitting(false);
-        // Tampilkan pesan error kepada pengguna
-        Swal.fire({
-          icon: "error",
-          title: "Error!",
-          text: "Terjadi kesalahan saat mengirim formulir. Silakan coba lagi.",
-          confirmButtonColor: "#000",
-        });
-      }
-    } else {
-      console.log("Form validation failed:", errors); // Logging error validasi
+        console.error("Error sending room request:", error);
 
-      // Tampilkan pesan error validasi dalam satu notifikasi
-      const errorMessages = Object.values(errors).join("\n");
-      if (errorMessages) {
+        // Tampilkan error ke user
         Swal.fire({
-          icon: "warning",
-          title: "Formulir Belum Lengkap",
-          text: "Harap lengkapi semua field yang diperlukan",
-          confirmButtonColor: "#000",
+          title: "Gagal Mengirim Permintaan",
+          text: "Terjadi kesalahan saat mengirim permintaan sewa. Silakan coba lagi atau gunakan WhatsApp.",
+          icon: "error",
+          showCancelButton: true,
+          confirmButtonText: "Coba Lagi",
+          cancelButtonText: "Kirim via WhatsApp",
+        }).then((result) => {
+          if (
+            result.isDismissed ||
+            result.dismiss === Swal.DismissReason.cancel
+          ) {
+            openWhatsApp();
+          }
         });
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
@@ -839,10 +896,11 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
                         Informasi Penting
                       </h3>
                       <p className="text-sm text-yellow-700">
-                        Mohon pastikan data yang Anda masukkan sudah benar dan
-                        sesuai identitas asli. Kami akan menghubungi Anda
-                        melalui WhatsApp untuk konfirmasi setelah pengajuan
-                        diterima.
+                        Mohon pastikan data yang Anda isi sesuai dengan
+                        identitas asli. Gunakan nomor telepon dan alamat email
+                        yang sama seperti saat registrasi. Setelah pengajuan
+                        Anda diterima, kami akan menghubungi melalui WhatsApp
+                        untuk proses konfirmasi.
                       </p>
                     </div>
                   </div>
@@ -1160,3 +1218,30 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
 };
 
 export default DetailRoom;
+async function checkApiConnection(): Promise<boolean> {
+  try {
+    const response = await axios.get("/api/health-check");
+    return response.status === 200;
+  } catch {
+    return false;
+  }
+}
+
+const getUserIdFromCookieOrStorage = () => {
+  // Coba dari localStorage
+  const userDataStr = localStorage.getItem("userData");
+  if (userDataStr) {
+    try {
+      const userData = JSON.parse(userDataStr);
+      if (userData.id) {
+        return userData.id.toString();
+      }
+    } catch (e) {
+      console.error("Error parsing user data:", e);
+    }
+  }
+
+  // Jika tidak berhasil, TIDAK menggunakan ID default
+  // tapi kembalikan null untuk menandakan belum login
+  return null;
+};

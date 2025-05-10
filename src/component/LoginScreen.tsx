@@ -9,6 +9,12 @@ import Swal from "sweetalert2"; // Tambahkan import Swal
 import { API_BASE_URL } from "../data/Config";
 import axios from "axios";
 
+// Remove these useState hooks that were incorrectly placed outside a component
+// const [username, setUsername] = useState("");
+// const [password, setPassword] = useState("");
+// const [email, setEmail] = useState("");
+// const [loginAttempts, setLoginAttempts] = useState(0);
+
 interface LoginScreenProps {
   setIsLoggedIn: (value: boolean) => void;
   setIsAdmin: (value: boolean) => void;
@@ -48,6 +54,8 @@ const LoginScreen = ({
   const [phoneNumber, setPhoneNumber] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate(); // Gunakan untuk navigasi
+  // Add the loginAttempts state inside the component
+  const [loginAttempts, setLoginAttempts] = useState(0);
 
   // Add new states for OTP verification
   const [showOtpForm, setShowOtpForm] = useState(false);
@@ -155,6 +163,9 @@ const LoginScreen = ({
         }
       );
 
+      //mereset percobaan login jika berhasil
+      setLoginAttempts(0);
+
       // Pastikan cookie non-HTTP-only "isLoggedIn" disimpan dengan benar
       Cookies.set("isLoggedIn", "true", {
         expires: 7,
@@ -227,12 +238,33 @@ const LoginScreen = ({
     } catch (error) {
       console.error("Login error:", error);
       setError("Username atau password salah");
-      Swal.fire({
-        title: "Login Gagal",
-        text: "Username atau password salah",
-        icon: "error",
-        confirmButtonColor: "#FEBF00",
-      });
+
+      // Tambah hitungan percobaan login gagal
+      const newAttempts = loginAttempts + 1;
+      setLoginAttempts(newAttempts);
+
+      // Jika gagal login 4 kali atau lebih, tampilkan alert lupa password
+      if (newAttempts >= 4) {
+        Swal.fire({
+          title: "Anda lupa password?",
+          icon: "info",
+          html: `
+            Klik <a href="https://wa.me/0895352281010" style="font-weight: bold; color: #FEBF00;" target="_blank" rel="noopener noreferrer">Link ini</a> untuk menghubungi admin.
+          `,
+          showCloseButton: true,
+          showCancelButton: false,
+          background: "#fff",
+          confirmButtonColor: "#FEBF00",
+        });
+      } else {
+        // Tampilkan pesan error login biasa jika belum 4 kali
+        Swal.fire({
+          title: "Login Gagal",
+          text: "Username atau password salah",
+          icon: "error",
+          confirmButtonColor: "#FEBF00",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -286,6 +318,34 @@ const LoginScreen = ({
 
     setIsLoading(true);
     try {
+      // Cek apakah nomor telepon sudah terdaftar menggunakan endpoint yang tersedia
+      const usersResponse = await axios.get(`${API_BASE_URL}/api/users`);
+      const users = usersResponse.data || [];
+
+      // Cari user dengan nomor telepon yang sesuai
+      const matchingUser = users.find(
+        (user: { phoneNumber: string }) => user.phoneNumber === phoneNumber
+      );
+
+      if (matchingUser) {
+        Swal.fire({
+          title: "Nomor Telepon Sudah Terdaftar",
+          text: "Nomor telepon ini sudah pernah didaftarkan. Silakan gunakan nomor telepon lain atau login dengan nomor ini.",
+          icon: "warning",
+          confirmButtonText: "Login",
+          showCancelButton: true,
+          cancelButtonText: "Ganti Nomor",
+          confirmButtonColor: "#FEBF00",
+        }).then((result) => {
+          if (result.isConfirmed) {
+            // Kembali ke halaman login
+            handleBackToLogin();
+          }
+        });
+        setIsLoading(false);
+        return;
+      }
+
       // Show a toast notification
       const Toast = Swal.mixin({
         toast: true,
@@ -374,28 +434,30 @@ const LoginScreen = ({
         title: "Memverifikasi OTP...",
       });
 
-      // Send both OTP and registration data to complete registration
-      const verifyResponse = await fetch(`${backendUrl}/api/auth/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      // Gunakan axios sebagai alternatif fetch
+      const verifyResponse = await axios.post(
+        `${backendUrl}/api/auth/verify-otp`,
+        {
           email: registrationData?.email,
           otp: otp,
           username: registrationData?.username,
           password: registrationData?.password,
           phoneNumber: registrationData?.phoneNumber,
-          role: "USER", // Default role
-        }),
-      });
+          role: "USER",
+        },
+        {
+          withCredentials: true,
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+        }
+      );
 
-      if (!verifyResponse.ok) {
-        const errorText = await verifyResponse.text();
-        throw new Error(errorText || "Verifikasi OTP gagal");
-      }
+      // Response handling untuk axios
+      const responseData = verifyResponse.data;
 
-      const responseData = await verifyResponse.json();
-
-      // Go directly to login form after successful registration
+      // Sisa dari fungsi tetap sama
       setShowOtpFormAnimated(false);
 
       setTimeout(() => {
