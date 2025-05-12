@@ -61,6 +61,9 @@ const LoginScreen = ({
   const [showOtpForm, setShowOtpForm] = useState(false);
   const [showOtpFormAnimated, setShowOtpFormAnimated] = useState(false);
   const [otp, setOtp] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   interface RegistrationData {
     username: string;
     email: string;
@@ -346,18 +349,25 @@ const LoginScreen = ({
         return;
       }
 
-      // Show a toast notification
-      const Toast = Swal.mixin({
-        toast: true,
-        position: "top-end",
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true,
-      });
-
-      Toast.fire({
-        icon: "info",
-        title: "Mengirim kode OTP ke email Anda...",
+      // Replace simple toast with detailed modal
+      Swal.fire({
+        title: "Kode OTP Terkirim!",
+        icon: "success",
+        html: `
+          <div class="text-left">
+            <p class="mb-2">Kode OTP telah dikirim ke: <strong>${email}</strong></p>
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 my-3">
+              <p class="font-medium">Tips Menemukan Kode OTP:</p>
+              <ul class="list-disc pl-5 mt-1 text-sm">
+                <li>Periksa folder <strong>Spam</strong> atau <strong>Junk</strong> jika tidak ada di Kotak Masuk</li>
+                <li>Kode OTP berlaku selama 2 menit</li>
+                <li>Kirim ulang kode jika belum menerima</li>
+              </ul>
+            </div>
+          </div>
+        `,
+        confirmButtonColor: "#FEBF00",
+        confirmButtonText: "Lanjutkan",
       });
 
       // Ganti dengan endpoint yang meminta OTP
@@ -406,6 +416,39 @@ const LoginScreen = ({
       setIsLoading(false);
     }
   };
+
+  // Add auto-reminder function
+  useEffect(() => {
+    let reminderTimeout: ReturnType<typeof setTimeout>;
+
+    if (showOtpForm && otpTimer === 60) {
+      // Half the initial time passed
+      reminderTimeout = setTimeout(() => {
+        // Show reminder toast if OTP form is still shown
+        if (showOtpForm) {
+          const Toast = Swal.mixin({
+            toast: true,
+            position: "top",
+            showConfirmButton: false,
+            timer: 8000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+              toast.addEventListener("mouseenter", Swal.stopTimer);
+              toast.addEventListener("mouseleave", Swal.resumeTimer);
+            },
+          });
+
+          Toast.fire({
+            icon: "info",
+            title: "Belum menerima kode OTP?",
+            html: "Cek folder <b>Spam</b> atau <b>Junk</b> di email Anda",
+          });
+        }
+      }, 1000);
+    }
+
+    return () => clearTimeout(reminderTimeout);
+  }, [otpTimer, showOtpForm]);
 
   const handleVerifyOtp = async () => {
     if (!otp || otp.length < 6) {
@@ -771,13 +814,59 @@ const LoginScreen = ({
                 </div>
                 <div className="relative">
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Password"
-                    className="w-full p-4 pl-5 text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50"
+                    className="w-full p-4 pl-5 pr-12 text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onKeyPress={handleKeyPressLogin}
                   />
+                  <button
+                    type="button"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    {showPassword ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -861,23 +950,121 @@ const LoginScreen = ({
                   onKeyPress={handleKeyPressRegister}
                 />
 
-                <input
-                  type="password"
-                  placeholder="Password"
-                  className="w-full p-4 pl-5 text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyPress={handleKeyPressRegister}
-                />
+                <div className="relative">
+                  <input
+                    type={showRegisterPassword ? "text" : "password"}
+                    placeholder="Password"
+                    className="w-full p-4 pl-5 pr-12 text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyPress={handleKeyPressRegister}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none"
+                    onClick={() =>
+                      setShowRegisterPassword(!showRegisterPassword)
+                    }
+                    aria-label={
+                      showRegisterPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    {showRegisterPassword ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                </div>
 
-                <input
-                  type="password"
-                  placeholder="Konfirmasi Password"
-                  className="w-full p-4 pl-5 text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  onKeyPress={handleKeyPressRegister}
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Konfirmasi Password"
+                    className="w-full p-4 pl-5 pr-12 text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onKeyPress={handleKeyPressRegister}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={
+                      showConfirmPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    {showConfirmPassword ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                </div>
 
                 <input
                   type="tel"
@@ -918,44 +1105,139 @@ const LoginScreen = ({
         >
           <div className="space-y-4">
             <div className="bg-white p-8 lg:p-10 rounded-t-3xl lg:rounded-3xl">
-              {/* Yellow accent bar at top */}
-              <div className="h-2 w-20 bg-[#FEBF00] rounded-full mx-auto mb-6"></div>
+              {/* Step indicator */}
+              <div className="flex items-center justify-center mb-6">
+                <div className="w-8 h-8 rounded-full bg-[#FEBF00] flex items-center justify-center text-white font-bold">
+                  1
+                </div>
+                <div className="h-1 w-8 bg-[#FEBF00]"></div>
+                <div className="w-8 h-8 rounded-full bg-[#FEBF00] flex items-center justify-center text-white font-bold">
+                  2
+                </div>
+                <div className="h-1 w-8 bg-gray-300"></div>
+                <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold">
+                  3
+                </div>
+              </div>
 
-              <h2 className="text-2xl lg:text-3xl font-bold mb-4 text-gray-800">
+              <h2 className="text-2xl lg:text-3xl font-bold mb-2 text-gray-800">
                 Verifikasi OTP
               </h2>
-              <p className="text-gray-600 mb-6">
-                Kode OTP telah dikirim ke{" "}
-                <span className="font-semibold text-[#FEBF00]">
-                  {registrationData?.email}
-                </span>
-              </p>
 
-              {/* OTP input with yellow accents */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 text-[#FEBF00]"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                  <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                </svg>
+                <p className="text-gray-600">
+                  Kode dikirim ke{" "}
+                  <span className="font-semibold text-[#FEBF00]">
+                    {registrationData?.email}
+                  </span>
+                </p>
+              </div>
+
+              {/* Alert box for spam folder reminder */}
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 text-left">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-yellow-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-700">
+                      Jika email tidak ditemukan di Kotak Masuk, silakan periksa
+                      folder <strong>Spam</strong> atau <strong>Junk</strong>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Enhanced OTP input with digit-like display */}
               <div className="space-y-5">
                 <div className="relative">
+                  <label className="block text-left text-sm font-medium text-gray-700 mb-1">
+                    Masukkan 6 digit kode OTP
+                  </label>
                   <input
                     type="text"
-                    placeholder="Masukkan 6 digit kode OTP"
-                    className="w-full p-4 pl-5 text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50 text-center tracking-wider font-bold"
+                    placeholder="000000"
+                    className="w-full p-4 pl-5 text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50 text-center tracking-[0.5em] font-bold"
                     value={otp}
                     onChange={(e) =>
                       setOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))
                     }
                     maxLength={6}
                   />
-                  <div className="mt-3 text-sm text-gray-500">
-                    Kode berlaku selama {otpTimer > 0 ? otpTimer : 0} detik
+
+                  {/* Visual representation of digits */}
+                  <div className="flex justify-center gap-2 mt-2">
+                    {[...Array(6)].map((_, index) => (
+                      <div
+                        key={index}
+                        className={`w-8 h-1 rounded-full ${
+                          index < otp.length ? "bg-[#FEBF00]" : "bg-gray-300"
+                        } transition-all duration-300`}
+                      ></div>
+                    ))}
+                  </div>
+
+                  {/* Timer with visual indicator */}
+                  <div className="mt-4 flex items-center justify-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-[#FEBF00]"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    <div className="text-sm text-gray-600">
+                      Kode berlaku selama{" "}
+                      <span className="font-bold text-[#FEBF00]">
+                        {otpTimer > 0 ? otpTimer : 0}
+                      </span>{" "}
+                      detik
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Main action button with yellow theme */}
               <button
-                className="mt-8 px-12 py-4 bg-[#FEBF00] text-white rounded-xl w-full font-bold transition-all duration-300 hover:bg-[#FEA700] hover:scale-105 active:scale-95 shadow-lg"
+                className="mt-8 px-12 py-4 bg-[#FEBF00] text-white rounded-xl w-full font-bold transition-all duration-300 hover:bg-[#FEA700] hover:scale-105 active:scale-95 shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:scale-100"
                 onClick={handleVerifyOtp}
+                disabled={otp.length !== 6}
               >
-                Verifikasi & Daftar
+                {otp.length !== 6
+                  ? "Masukkan 6 digit kode"
+                  : "Verifikasi & Daftar"}
               </button>
 
               <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -967,7 +1249,7 @@ const LoginScreen = ({
                 </button>
 
                 <button
-                  className={`w-full sm:w-auto px-4 sm:px-6 py-3 ${
+                  className={`w-full sm:w-auto px-4 sm:px-6 py-3 flex items-center justify-center gap-2 ${
                     isResendDisabled
                       ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                       : "bg-[#FEBF00] text-white hover:bg-[#FEA700]"
@@ -977,17 +1259,53 @@ const LoginScreen = ({
                   onClick={handleResendOtp}
                   disabled={isResendDisabled}
                 >
-                  {isResendDisabled
-                    ? `Kirim ulang (${otpTimer}s)`
-                    : "Kirim ulang OTP"}
+                  {isResendDisabled ? (
+                    <>
+                      <svg
+                        className="w-4 h-4 animate-pulse"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                          clipRule="evenodd"
+                        ></path>
+                      </svg>
+                      <span>{otpTimer}s</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="w-4 h-4"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                          clipRule="evenodd"
+                        ></path>
+                      </svg>
+                      <span>Kirim ulang OTP</span>
+                    </>
+                  )}
                 </button>
               </div>
 
-              {/* Information text */}
-              <p className="mt-6 text-sm text-gray-500">
-                Tidak menerima kode? Periksa folder spam atau coba kirim ulang
-                setelah timer berakhir.
-              </p>
+              {/* Improved help text */}
+              <div className="mt-6 text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+                <p className="font-medium mb-1 text-left">Bantuan:</p>
+                <ul className="list-disc text-left pl-5">
+                  <li>Pastikan email yang dimasukkan benar</li>
+                  <li>
+                    Periksa folder Spam/Junk jika tidak ada di Kotak Masuk
+                  </li>
+                  <li>Gunakan fitur kirim ulang jika tidak menerima kode</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
