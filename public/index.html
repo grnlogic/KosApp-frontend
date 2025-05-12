@@ -61,6 +61,21 @@
         pointer-events: none !important;
         transform: translateY(-100%) !important;
       }
+
+      /* Pastikan SweetAlert2 tidak terganggu oleh overflow-hidden */
+      body.swal2-shown {
+        overflow: hidden !important;
+      }
+      /* Perbaikan tambahan untuk memastikan scroll kembali */
+      body.scroll-reset {
+        overflow: auto !important;
+        overflow-x: hidden !important;
+      }
+
+      /* Perbaikan konflik sweet alert dengan class overflow-hidden */
+      .swal2-container {
+        z-index: 10000 !important;
+      }
     </style>
   </head>
   <body>
@@ -76,5 +91,40 @@
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
+    <script>
+      // Script untuk memperbaiki masalah scrolling
+      document.addEventListener("DOMContentLoaded", function () {
+        // Reset scroll state jika halaman di-refresh dengan class overflow-hidden aktif
+        if (document.body.classList.contains("overflow-hidden")) {
+          document.body.classList.remove("overflow-hidden");
+          document.body.style.overflow = "";
+          document.body.style.paddingRight = "";
+        }
+
+        // Tangani saat SweetAlert ditutup
+        document.addEventListener("click", function (e) {
+          // Jika tombol close SweetAlert diklik
+          if (
+            e.target &&
+            (e.target.classList.contains("swal2-close") ||
+              e.target.classList.contains("swal2-confirm") ||
+              e.target.classList.contains("swal2-cancel"))
+          ) {
+            setTimeout(function () {
+              // Pastikan scroll kembali normal
+              document.body.classList.remove("overflow-hidden");
+              document.body.style.overflow = "";
+              document.body.style.paddingRight = "";
+              document.body.classList.add("scroll-reset");
+
+              // Hapus class scroll-reset setelah beberapa saat
+              setTimeout(function () {
+                document.body.classList.remove("scroll-reset");
+              }, 500);
+            }, 100);
+          }
+        });
+      });
+    </script>
   </body>
 </html>

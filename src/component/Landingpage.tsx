@@ -117,6 +117,58 @@ const checkApiConnection = async (): Promise<boolean> => {
   }
 };
 
+// Helper function to get user ID from cookie or storage
+const getLocalUserId = (): number | null => {
+  // Try to get from localStorage first
+  const userDataStr = localStorage.getItem("userData");
+  if (userDataStr) {
+    try {
+      const userData = JSON.parse(userDataStr);
+      if (userData.userId) return userData.userId;
+    } catch (e) {
+      console.error("Error parsing userData from localStorage:", e);
+    }
+  }
+
+  // Try to extract from JWT if available
+  const token = getAuthToken();
+
+  if (token) {
+    try {
+      // Simple JWT payload extraction - not for production
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const payload = JSON.parse(window.atob(base64));
+      return payload.userId || null;
+    } catch (e) {
+      console.error("Error extracting userId from token:", e);
+    }
+  }
+
+  return null;
+};
+
+// Tambahkan fungsi helper untuk mengelola scroll
+const scrollHelper = {
+  disable: () => {
+    document.body.classList.add("overflow-hidden");
+  },
+  enable: () => {
+    document.body.classList.remove("overflow-hidden");
+    // Reset jika ada style inline yang ditambahkan oleh SweetAlert
+    document.body.style.overflow = "";
+    document.body.style.paddingRight = "";
+  },
+  reset: () => {
+    // Fungsi ini memastikan scroll selalu dikembalikan
+    setTimeout(() => {
+      document.body.classList.remove("overflow-hidden");
+      document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
+    }, 100);
+  },
+};
+
 // Update the saveRoomRegistrationRequest function to include room rental information
 const saveRoomRegistrationRequest = async (
   roomId: string | number,
@@ -137,11 +189,21 @@ const saveRoomRegistrationRequest = async (
       confirmButtonText: "Login",
       cancelButtonText: "Batal",
       confirmButtonColor: "#000",
+      didOpen: () => {
+        // Disable scroll when modal opens
+        scrollHelper.disable();
+      },
+      willClose: () => {
+        // Enable scroll when modal closes
+        scrollHelper.enable();
+      },
     }).then((result) => {
       if (result.isConfirmed) {
         // Redirect to login page or show login modal
         window.location.href = "/login";
       }
+      // Pastikan scroll kembali normal
+      scrollHelper.reset();
     });
     return;
   }
@@ -193,6 +255,9 @@ const saveRoomRegistrationRequest = async (
     confirmButtonColor: "#000",
     width: 600,
     didOpen: () => {
+      // Disable scroll when modal opens
+      scrollHelper.disable();
+
       // Update total payment when duration changes
       const durationSelect = document.getElementById(
         "duration"
@@ -207,6 +272,10 @@ const saveRoomRegistrationRequest = async (
       };
 
       durationSelect.addEventListener("change", updateTotal);
+    },
+    willClose: () => {
+      // Enable scroll when modal closes
+      scrollHelper.enable();
     },
     preConfirm: () => {
       const name = (document.getElementById("name") as HTMLInputElement).value;
@@ -248,6 +317,10 @@ const saveRoomRegistrationRequest = async (
         allowOutsideClick: false,
         didOpen: () => {
           Swal.showLoading();
+          scrollHelper.disable();
+        },
+        willClose: () => {
+          scrollHelper.enable();
         },
       });
 
@@ -286,6 +359,12 @@ const saveRoomRegistrationRequest = async (
           text: "Server tidak dapat dijangkau. Permintaan Anda telah disimpan secara lokal dan akan dikirim ke admin saat koneksi kembali normal.",
           icon: "warning",
           confirmButtonColor: "#000",
+          didOpen: () => {
+            scrollHelper.disable();
+          },
+          willClose: () => {
+            scrollHelper.enable();
+          },
         });
         return;
       }
@@ -301,11 +380,19 @@ const saveRoomRegistrationRequest = async (
       if (!userId) {
         // Close loading indicator if no userId found
         Swal.close();
+        scrollHelper.reset();
+
         Swal.fire({
           title: "Error",
           text: "User ID tidak ditemukan. Silakan login ulang.",
           icon: "error",
           confirmButtonColor: "#000",
+          didOpen: () => {
+            scrollHelper.disable();
+          },
+          willClose: () => {
+            scrollHelper.enable();
+          },
         });
         return;
       }
@@ -330,17 +417,26 @@ const saveRoomRegistrationRequest = async (
           console.log("Room request response:", response.data);
           // Always close the loading indicator
           Swal.close();
+          scrollHelper.reset();
 
           Swal.fire({
             title: "Permintaan Terkirim!",
             text: `Permintaan pendaftaran dan penyewaan kamar ${roomNumber} Anda telah dikirim. Admin akan memprosesnya segera.`,
             icon: "success",
             confirmButtonColor: "#000",
+            didOpen: () => {
+              scrollHelper.disable();
+            },
+            willClose: () => {
+              scrollHelper.enable();
+            },
           });
         })
         .catch((error) => {
           // Always close the loading indicator
           Swal.close();
+          scrollHelper.reset();
+
           console.error("Error sending room request:", error);
 
           let errorMessage = "Koneksi gagal";
@@ -366,6 +462,12 @@ const saveRoomRegistrationRequest = async (
             text: errorMessage,
             icon: "error",
             confirmButtonColor: "#000",
+            didOpen: () => {
+              scrollHelper.disable();
+            },
+            willClose: () => {
+              scrollHelper.enable();
+            },
           });
 
           // For debugging - store the failed request in localStorage
@@ -390,47 +492,27 @@ const saveRoomRegistrationRequest = async (
       setTimeout(() => {
         if (Swal.isLoading()) {
           Swal.close();
+          scrollHelper.reset();
+
           Swal.fire({
             title: "Timeout",
             text: "Permintaan membutuhkan waktu terlalu lama. Silakan coba lagi nanti.",
             icon: "warning",
             confirmButtonColor: "#000",
+            didOpen: () => {
+              scrollHelper.disable();
+            },
+            willClose: () => {
+              scrollHelper.enable();
+            },
           });
         }
       }, 15000); // 15 seconds safety timeout
+    } else {
+      // Jika pengguna cancel atau tutup dialog
+      scrollHelper.reset();
     }
   });
-};
-
-// Helper function to get user ID from cookie or storage
-const getLocalUserId = (): number | null => {
-  // Try to get from localStorage first
-  const userDataStr = localStorage.getItem("userData");
-  if (userDataStr) {
-    try {
-      const userData = JSON.parse(userDataStr);
-      if (userData.userId) return userData.userId;
-    } catch (e) {
-      console.error("Error parsing userData from localStorage:", e);
-    }
-  }
-
-  // Try to extract from JWT if available
-  const token = getAuthToken();
-
-  if (token) {
-    try {
-      // Simple JWT payload extraction - not for production
-      const base64Url = token.split(".")[1];
-      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-      const payload = JSON.parse(window.atob(base64));
-      return payload.userId || null;
-    } catch (e) {
-      console.error("Error extracting userId from token:", e);
-    }
-  }
-
-  return null;
 };
 
 //card list
@@ -551,14 +633,15 @@ const CardList = () => {
   // Add function to handle card selection with nav hiding
   const handleCardSelect = (card: Card) => {
     setSelectedCard(card);
-    // Directly add class to body to prevent scrolling when modal opens
-    document.body.classList.add("overflow-hidden");
+    // Gunakan fungsi helper
+    scrollHelper.disable();
   };
 
   // Add function to handle closing with nav restoration
   const handleCloseModal = () => {
     setSelectedCard(null);
-    document.body.classList.remove("overflow-hidden");
+    // Gunakan fungsi helper
+    scrollHelper.enable();
   };
 
   // Better loading state with skeleton cards - now more visible
@@ -1090,10 +1173,10 @@ const LandingPage: React.FC = () => {
       {/* Main content - adjusted padding for mobile */}
       <article className="relative z-10 container mx-auto px-3 pt-20 pb-6 md:px-4 md:py-16">
         {/* SECTION 1: Sambutan untuk pengguna baru */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl md:rounded-3xl shadow-lg md:shadow-xl mb-8 md:mb-16">
+        <section className="relative overflow-hidden bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl md:rounded-3xl shadow-lg md:shadow-xl mb-8 md:mb-16 mt-8 md:mt-10">
           <div className="absolute -right-24 -top-24 w-48 h-48 md:w-64 md:h-64 rounded-full bg-yellow-300 opacity-30"></div>
           <div className="absolute -left-24 -bottom-24 w-64 h-64 md:w-80 md:h-80 rounded-full bg-yellow-300 opacity-30"></div>
-          <div className="relative py-8 md:py-16 px-4 md:px-6 lg:px-20">
+          <div className="relative py-12 md:py-26 px-4 md:px-6 lg:px-20">
             <motion.div
               className="max-w-2xl"
               initial={{ opacity: 0, y: 50 }}
@@ -1130,7 +1213,7 @@ const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        {/* SECTION 2: Promosi Mimin Kost */}
+        {/* SECTION 2: Mimin Kost - Mitra Unggulan with Owner information combined */}
         <section className="mb-8 md:mb-16">
           <motion.div
             className="text-center mb-6 md:mb-10"
@@ -1143,9 +1226,22 @@ const LandingPage: React.FC = () => {
               <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-16 md:w-24 h-1 bg-yellow-400 rounded-full"></div>
             </h2>
             <p className="text-base md:text-lg text-gray-600 mt-4 max-w-2xl mx-auto px-2">
-              Mimin Kost adalah hunian eksklusif yang bermitra dengan KosApp
-              untuk memberikan pengalaman menginap terbaik.
+              Mimin Kost adalah hunian eksklusif yang dikelola dengan penuh
+              dedikasi oleh keluarga yang ramah dan profesional
             </p>
+          </motion.div>
+
+          {/* Keluarga Mimin Kost (Owner) Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mb-12"
+          >
+            <h3 className="text-xl md:text-2xl font-bold text-center mb-4 text-gray-700">
+              Keluarga Pengelola
+            </h3>
+            <Owner />
           </motion.div>
 
           {/* Highlight Mimin Kost */}
@@ -1241,7 +1337,7 @@ const LandingPage: React.FC = () => {
           </motion.div>
         </section>
 
-        {/* SECTION 3: Promosi KosApp Coming Soon */}
+        {/* SECTION 4: Promosi KosApp Coming Soon */}
         <section className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-3xl shadow-xl p-8 md:p-12 mb-8 overflow-hidden relative">
           <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-yellow-300 opacity-30"></div>
           <div className="absolute -left-16 -bottom-16 w-64 h-64 rounded-full bg-yellow-300 opacity-30"></div>
@@ -1476,7 +1572,10 @@ const LandingPage: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowComingSoon(false)}
+            onClick={() => {
+              setShowComingSoon(false);
+              scrollHelper.enable(); // Pastikan scroll kembali saat modal ditutup
+            }}
           >
             <motion.div
               className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-3xl shadow-2xl p-8 md:p-10 max-w-xl w-full relative overflow-hidden my-4"
@@ -1497,7 +1596,10 @@ const LandingPage: React.FC = () => {
               {/* Close button */}
               <button
                 className="absolute top-4 right-4 bg-white rounded-full p-1.5 text-yellow-600 hover:bg-yellow-600 hover:text-white transition-colors z-10"
-                onClick={() => setShowComingSoon(false)}
+                onClick={() => {
+                  setShowComingSoon(false);
+                  scrollHelper.enable(); // Pastikan scroll kembali saat tombol close ditekan
+                }}
               >
                 <X size={20} />
               </button>
@@ -1560,6 +1662,174 @@ const LandingPage: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white pt-12 pb-8">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            {/* Contact Section */}
+            <div>
+              <h3 className="text-xl font-bold mb-4 text-yellow-400">
+                Hubungi Kami
+              </h3>
+              <ul className="space-y-2">
+                <li className="flex items-start gap-2">
+                  <MapPinHouse
+                    size={18}
+                    className="text-yellow-400 mt-1 flex-shrink-0"
+                  />
+                  <span>Jl. Merak No. 15, Semarang, Indonesia</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Phone
+                    size={18}
+                    className="text-yellow-400 mt-1 flex-shrink-0"
+                  />
+                  <span>+62 8234567890</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Mail
+                    size={18}
+                    className="text-yellow-400 mt-1 flex-shrink-0"
+                  />
+                  <span>info@miminkost.id</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h3 className="text-xl font-bold mb-4 text-yellow-400">Tautan</h3>
+              <ul className="space-y-2">
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-yellow-400 transition-colors"
+                  >
+                    Beranda
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-yellow-400 transition-colors"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowTentangKosApp(true);
+                    }}
+                  >
+                    Tentang Kami
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-yellow-400 transition-colors"
+                  >
+                    Kamar Tersedia
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-yellow-400 transition-colors"
+                  >
+                    Fasilitas
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-yellow-400 transition-colors"
+                  >
+                    Syarat & Ketentuan
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Newsletter */}
+            <div>
+              <h3 className="text-xl font-bold mb-4 text-yellow-400">
+                Berita Terbaru
+              </h3>
+              <p className="mb-4">
+                Dapatkan informasi dan promo terbaru dari Mimin Kost
+              </p>
+              <div className="flex">
+                <input
+                  type="email"
+                  placeholder="Email Anda"
+                  className="px-4 py-2 rounded-l-md text-gray-800 w-full"
+                />
+                <button
+                  className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-r-md transition-colors"
+                  onClick={() => setShowComingSoon(true)}
+                >
+                  Daftar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Social Media & Copyright */}
+          <div className="pt-6 mt-6 border-t border-gray-700 flex flex-col md:flex-row justify-between items-center">
+            <div className="flex gap-4 mb-4 md:mb-0">
+              {/* Social Media Icons */}
+              <a
+                href="#"
+                className="bg-gray-700 p-2 rounded-full hover:bg-yellow-500 transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
+                </svg>
+              </a>
+              <a
+                href="#"
+                className="bg-gray-700 p-2 rounded-full hover:bg-yellow-500 transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                </svg>
+              </a>
+              <a
+                href="#"
+                className="bg-gray-700 p-2 rounded-full hover:bg-yellow-500 transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z" />
+                </svg>
+              </a>
+            </div>
+            <div className="text-center md:text-right text-sm text-gray-400">
+              <p>
+                © {new Date().getFullYear()} Mimin Kost. All rights reserved.
+              </p>
+              <p>
+                Powered by <span className="text-yellow-400">KosApp</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
