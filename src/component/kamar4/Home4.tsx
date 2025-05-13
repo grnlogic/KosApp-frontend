@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Notification from "../PeraturanKost";
 import { useNavigate } from "react-router-dom";
+import { fetchProfileImage } from "../../utils/imageUpload"; // Import the new function
 
 const Home4 = () => {
   const navigate = useNavigate();
@@ -44,6 +45,22 @@ const Home4 = () => {
       fileInputRef.current.click();
     }
   };
+
+  // Load profile picture from Supabase instead of localStorage
+  useEffect(() => {
+    async function loadProfileImage() {
+      try {
+        const imageUrl = await fetchProfileImage("4"); // For Kamar 4
+        if (imageUrl) {
+          setProfilePicture(imageUrl);
+        }
+      } catch (error) {
+        console.error("Failed to load profile image:", error);
+      }
+    }
+
+    loadProfileImage();
+  }, []);
 
   useEffect(() => {
     const storedRoomId = localStorage.getItem("roomId");
@@ -127,9 +144,14 @@ const Home4 = () => {
           <div className="w-28 h-28 rounded-full overflow-hidden bg-white border-4 border-white shadow-lg">
             {profilePicture ? (
               <img
-                src={profilePicture || "/placeholder.svg"}
+                src={profilePicture}
                 alt="Profile"
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error("Error loading image:", e);
+                  e.currentTarget.onerror = null; // Prevent infinite error loop
+                  e.currentTarget.src = "/placeholder.svg"; // Fall back to placeholder
+                }}
               />
             ) : (
               <div className="w-full h-full bg-gray-100 flex items-center justify-center">
@@ -138,7 +160,7 @@ const Home4 = () => {
             )}
           </div>
           <button
-            onClick={triggerInputClick}
+            onClick={() => navigate("/profile4")}
             className="absolute bottom-2 right-[-40px] bg-white p-2.5 rounded-full shadow-lg hover:bg-gray-100 transition-colors"
           >
             <Camera size={18} className="text-[#FF7A00]" />

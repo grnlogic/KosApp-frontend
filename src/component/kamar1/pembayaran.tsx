@@ -51,16 +51,28 @@ const Contact = () => {
 
     try {
       // Update room payment status
-      const updatedRoom = { ...roomData, statusPembayaran: "Lunas" };
+      const updatedRoom = { ...roomData, statusPembayaran: "Menunggu" };
       await axios.put(
         `https://manage-kost-production.up.railway.app/api/kamar/${roomData.id}`,
         updatedRoom
       );
       setRoomData(updatedRoom);
-      alert("Pembayaran berhasil!");
+      Swal.fire({
+        title: "Pembayaran Sedang Diproses",
+        text: "Mohon tunggu konfirmasi dari admin. Status pembayaran Anda akan diperbarui segera.",
+        icon: "info",
+        confirmButtonText: "Mengerti",
+        confirmButtonColor: "#FEBF00",
+      });
     } catch (err) {
       console.error("Error processing payment:", err);
-      alert("Pembayaran gagal. Silakan coba lagi.");
+      Swal.fire({
+        title: "Pembayaran Gagal",
+        text: "Terjadi kesalahan. Silakan coba lagi nanti.",
+        icon: "error",
+        confirmButtonText: "Tutup",
+        confirmButtonColor: "#FEBF00",
+      });
     } finally {
       setIsPaymentProcessing(false);
     }
@@ -99,10 +111,36 @@ const Contact = () => {
     });
   };
 
+  const getStatusBadge = (status: string | undefined) => {
+    if (status === "Lunas") {
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+          <Check className="mr-1" size={14} />
+          Lunas
+        </span>
+      );
+    } else if (status === "Menunggu") {
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+          <Clock className="mr-1" size={14} />
+          Menunggu
+        </span>
+      );
+    } else {
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+          <AlertCircle className="mr-1" size={14} />
+          Belum Dibayar
+        </span>
+      );
+    }
+  };
+
   if (loading) {
     return (
       <div className="animate-fadeIn flex justify-center items-center h-40">
-        Loading...
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#FFCC00]"></div>
+        <span className="ml-2 text-[#FFCC00] font-medium">Loading...</span>
       </div>
     );
   }
@@ -141,27 +179,12 @@ const Contact = () => {
               <Clock className="text-[#FF7A00] mr-2" size={18} />
               <h1 className="text-lg text-gray-800 font-medium">Status</h1>
             </div>
-            <span
-              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                roomData.statusPembayaran === "Lunas"
-                  ? "bg-green-100 text-green-800"
-                  : roomData.statusPembayaran === "Menunggu"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-red-100 text-red-800"
-              }`}
-            >
-              {roomData.statusPembayaran === "Lunas" ? (
-                <Check className="mr-1" size={14} />
-              ) : (
-                <AlertCircle className="mr-1" size={14} />
-              )}
-              {roomData.statusPembayaran || "Belum Dibayar"}
-            </span>
+            {getStatusBadge(roomData.statusPembayaran)}
           </div>
           <button
             className={`bg-gradient-to-r from-[#FFCC00] to-[#FF9500] text-white rounded-xl py-4 mt-6 w-full text-lg font-bold shadow-md hover:shadow-lg transform hover:translate-y-[-2px] transition-all duration-300 flex justify-center items-center ${
               isPaymentProcessing || roomData.statusPembayaran === "Lunas"
-                ? "opacity-75"
+                ? "opacity-75 cursor-not-allowed"
                 : ""
             }`}
             onClick={handlePayment}

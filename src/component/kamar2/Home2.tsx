@@ -15,6 +15,7 @@ import {
 import backbutton from "../image/chevron-right.svg";
 import Notification from "../PeraturanKost";
 import { useNavigate } from "react-router-dom";
+import { fetchProfileImage } from "../../utils/imageUpload"; // Import the new function
 
 const Home2 = () => {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const Home2 = () => {
   const [activeContent, setActiveContent] = useState<string>("notification");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [isLoadingImage, setIsLoadingImage] = useState(true);
 
   // Handle picture upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,6 +43,25 @@ const Home2 = () => {
       fileInputRef.current.click();
     }
   };
+
+  // Load profile picture from Supabase
+  useEffect(() => {
+    async function loadProfileImage() {
+      setIsLoadingImage(true);
+      try {
+        const imageUrl = await fetchProfileImage("2"); // Hard-coded for Kamar 2
+        if (imageUrl) {
+          setProfilePicture(imageUrl);
+        }
+      } catch (error) {
+        console.error("Failed to load profile image:", error);
+      } finally {
+        setIsLoadingImage(false);
+      }
+    }
+
+    loadProfileImage();
+  }, []);
 
   useEffect(() => {
     const storedRoomId = localStorage.getItem("roomId");
@@ -124,9 +145,14 @@ const Home2 = () => {
           <div className="w-28 h-28 rounded-full overflow-hidden bg-white border-4 border-white shadow-lg">
             {profilePicture ? (
               <img
-                src={profilePicture || "/placeholder.svg"}
+                src={profilePicture}
                 alt="Profile"
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error("Error loading image:", e);
+                  e.currentTarget.onerror = null; // Prevent infinite error loop
+                  e.currentTarget.src = "/placeholder.svg"; // Fall back to placeholder
+                }}
               />
             ) : (
               <div className="w-full h-full bg-gray-100 flex items-center justify-center">
@@ -135,7 +161,7 @@ const Home2 = () => {
             )}
           </div>
           <button
-            onClick={triggerInputClick}
+            onClick={() => navigate("/profile2")}
             className="absolute bottom-2 right-[-40px] bg-white p-2.5 rounded-full shadow-lg hover:bg-gray-100 transition-colors"
           >
             <Camera size={18} className="text-[#FF7A00]" />

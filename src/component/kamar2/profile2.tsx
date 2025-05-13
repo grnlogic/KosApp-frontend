@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Home,
   User,
@@ -11,7 +11,11 @@ import {
   Mail,
   MapPin,
   Calendar,
+  Check,
 } from "lucide-react";
+import { uploadImage, fetchProfileImage } from "../../utils/imageUpload";
+import Swal from "sweetalert2";
+import AvatarEditor from "react-avatar-editor";
 
 export default function ProfilePage() {
   // User profile state
@@ -44,38 +48,81 @@ export default function ProfilePage() {
 
   // Saat login berhasil, simpan token ke localStorage
   // localStorage.setItem("authToken", token); // Removed or define 'token' before using
+
+  // Image cropping state
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [imageToEdit, setImageToEdit] = useState<string | null>(null);
+  const [scale, setScale] = useState(1);
+  const editorRef = useRef<AvatarEditor | null>(null);
+
   //handle picture
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const formData = new FormData();
-      formData.append("file", file); // Nama field harus sesuai dengan backend
-      formData.append("roomId", profile.room.toString()); // Kirim roomId
+      // Show image editor instead of uploading directly
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageToEdit(reader.result as string);
+        setShowCropModal(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-      try {
-        const res = await fetch(
-          "http://localhost:8080/api/profile-picture/upload",
-          {
-            method: "POST",
-            body: formData,
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("authToken")}`, // Include token from localStorage
-            },
-          }
-        );
+  // Handle saving cropped image
+  const handleSaveCroppedImage = async () => {
+    if (editorRef.current) {
+      const canvas = editorRef.current.getImageScaledToCanvas();
+      const croppedImageUrl = canvas.toDataURL();
 
-        if (!res.ok) {
-          if (res.status === 405) {
-            console.error("Metode HTTP tidak didukung oleh server.");
-          } else {
-            throw new Error("Gagal mengunggah gambar");
+      // Set temporary preview
+      setProfilePicture(croppedImageUrl);
+
+      // Close modal
+      setShowCropModal(false);
+
+      // Convert canvas to blob and upload
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          try {
+            Swal.fire({
+              title: "Mengunggah gambar...",
+              didOpen: () => {
+                Swal.showLoading();
+              },
+              allowOutsideClick: false,
+              allowEscapeKey: false,
+            });
+
+            const imageUrl = await uploadImage(
+              new File([blob], "profile-image.png", { type: "image/png" }),
+              profile.room
+            );
+
+            console.log("Received image URL from Supabase:", imageUrl);
+
+            if (imageUrl) {
+              // Force browser to reload the image by adding a timestamp
+              const cachedImageUrl = `${imageUrl}?t=${new Date().getTime()}`;
+              setProfilePicture(cachedImageUrl);
+
+              Swal.fire({
+                icon: "success",
+                title: "Berhasil!",
+                text: "Foto profil berhasil diperbarui.",
+                timer: 1500,
+              });
+            }
+          } catch (error) {
+            console.error("Error uploading image to Supabase:", error);
+            Swal.fire({
+              icon: "error",
+              title: "Oops...",
+              text: "Gagal mengunggah gambar. Silakan coba lagi.",
+            });
           }
         }
-
-        const data = await res.text();
-      } catch (error) {
-        console.error("Error uploading image:", error);
-      }
+      }, "image/png");
     }
   };
 
@@ -88,12 +135,33 @@ export default function ProfilePage() {
 
   //save bio
   const saveBio = () => {
-    setProfile({
-      ...profile,
-      bio: tempBio,
+    Swal.fire({
+      title: "Simpan perubahan?",
+      text: "Perubahan akan disimpan",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#FF9500",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Ya, simpan!",
+      cancelButtonText: "Batal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setProfile({
+          ...profile,
+          bio: tempBio,
+        });
+        setEditBio(false);
+        Swal.fire({
+          position: "center",
+          icon: "success",
+          title: "Bio berhasil diperbarui!",
+          showConfirmButton: false,
+          timer: 1500,
+        });
+      }
     });
-    setEditBio(false);
   };
+
   //cancel bio
   const cancelBio = () => {
     setTempBio(profile.bio);
@@ -151,41 +219,28 @@ export default function ProfilePage() {
     setTempPhone(profile.phone);
     setEditProfile(false);
   };
+
+  // No need for the previous fetchProfilePicture implementation since we're using Supabase URLs directly
   useEffect(() => {
-    const fetchProfilePicture = async () => {
-      const token = localStorage.getItem("authToken"); // Ambil token dari localStorage
-
-      if (!token) {
-        console.error("Token tidak ditemukan. Pastikan Anda sudah login.");
-        return;
-      }
-
-      try {
-        const res = await fetch(
-          `http://localhost:8080/api/profile-picture/${profile.room}`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`, // Kirim token di header
-            },
-          }
-        );
-
-        if (!res.ok) {
-          throw new Error("Gagal memuat gambar profil");
-        }
-
-        const blob = await res.blob();
-        const imageUrl = URL.createObjectURL(blob);
-        setProfilePicture(imageUrl);
-      } catch (error) {
-        console.error("Error fetching profile picture:", error);
-      }
-    };
-
-    fetchProfilePicture();
+    // You can still fetch the profile image from Supabase if needed
+    // This is a placeholder for potential future implementation
   }, [profile.room]);
 
+  // Load profile picture from localStorage on component mount
+  useEffect(() => {
+    async function loadProfileImage() {
+      try {
+        const imageUrl = await fetchProfileImage(profile.room);
+        if (imageUrl) {
+          setProfilePicture(imageUrl);
+        }
+      } catch (error) {
+        console.error("Failed to load profile image:", error);
+      }
+    }
+
+    loadProfileImage();
+  }, [profile.room]);
 
   return (
     <div className="flex flex-col min-h-screen bg-[#FFF8E7]">
@@ -216,9 +271,14 @@ export default function ProfilePage() {
             <div className="w-28 h-28 rounded-full overflow-hidden bg-white border-4 border-white shadow-md">
               {profilePicture ? (
                 <img
-                  src={profilePicture || "/placeholder.svg"}
+                  src={profilePicture}
                   alt="Profile"
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error("Error loading image:", e);
+                    e.currentTarget.onerror = null; // Prevent infinite error loop
+                    e.currentTarget.src = "/placeholder.svg"; // Fall back to placeholder
+                  }}
                 />
               ) : (
                 <div className="w-full h-full bg-gray-100 flex items-center justify-center">
@@ -480,6 +540,62 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Image Crop Modal */}
+      {showCropModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-5 max-w-md w-full">
+            <h3 className="text-xl font-bold mb-3 text-gray-800">
+              Sesuaikan Foto Profil
+            </h3>
+            <div className="flex justify-center mb-4">
+              <AvatarEditor
+                ref={editorRef}
+                image={imageToEdit || ""}
+                width={250}
+                height={250}
+                border={50}
+                borderRadius={125}
+                color={[255, 255, 255, 0.6]} // RGBA
+                scale={scale}
+                rotate={0}
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Zoom
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="2"
+                step="0.01"
+                value={scale}
+                onChange={(e) => setScale(parseFloat(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowCropModal(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg flex items-center gap-2"
+              >
+                <X size={16} />
+                <span>Batal</span>
+              </button>
+              <button
+                onClick={handleSaveCroppedImage}
+                className="px-4 py-2 bg-gradient-to-r from-[#FFCC00] to-[#FF9500] text-white rounded-lg flex items-center gap-2"
+              >
+                <Check size={16} />
+                <span>Simpan</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

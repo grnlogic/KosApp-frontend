@@ -1,5 +1,6 @@
 import BackButtonOrange from "../image/chevron-right.svg";
 import React, { useState, useEffect } from "react";
+import { CreditCard, Calendar, Clock, Check, AlertCircle } from "lucide-react";
 import axios from "axios";
 import Swal from "sweetalert2";
 
@@ -50,16 +51,28 @@ const Contact = () => {
 
     try {
       // Update room payment status
-      const updatedRoom = { ...roomData, statusPembayaran: "Lunas" };
+      const updatedRoom = { ...roomData, statusPembayaran: "Menunggu" };
       await axios.put(
         `https://manage-kost-production.up.railway.app/api/kamar/${roomData.id}`,
         updatedRoom
       );
       setRoomData(updatedRoom);
-      alert("Pembayaran berhasil!");
+      Swal.fire({
+        title: "Pembayaran Sedang Diproses",
+        text: "Mohon tunggu konfirmasi dari admin. Status pembayaran Anda akan diperbarui segera.",
+        icon: "info",
+        confirmButtonText: "Mengerti",
+        confirmButtonColor: "#FEBF00",
+      });
     } catch (err) {
       console.error("Error processing payment:", err);
-      alert("Pembayaran gagal. Silakan coba lagi.");
+      Swal.fire({
+        title: "Pembayaran Gagal",
+        text: "Terjadi kesalahan. Silakan coba lagi nanti.",
+        icon: "error",
+        confirmButtonText: "Tutup",
+        confirmButtonColor: "#FEBF00",
+      });
     } finally {
       setIsPaymentProcessing(false);
     }
@@ -100,7 +113,10 @@ const Contact = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-40">Loading...</div>
+      <div className="flex justify-center items-center h-40">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#FEBF00]"></div>
+        <span className="ml-2 text-[#FEBF00] font-medium">Loading...</span>
+      </div>
     );
   }
 
@@ -112,55 +128,91 @@ const Contact = () => {
     return <div className="text-center p-4">No room data available</div>;
   }
 
+  const getStatusBadge = (status: string | undefined) => {
+    if (status === "Lunas") {
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+          <Check className="mr-1" size={14} />
+          Lunas
+        </span>
+      );
+    } else if (status === "Menunggu") {
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+          <Clock className="mr-1" size={14} />
+          Menunggu
+        </span>
+      );
+    } else {
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+          <AlertCircle className="mr-1" size={14} />
+          Belum Dibayar
+        </span>
+      );
+    }
+  };
+
   return (
-    <div>
-      <div className="container mx-auto bg-[#FEBF00] rounded-md p-5 mb-9">
-        <div className="flex items-center space-x-2">
-          <h3 className="text-white font-extrabold text-2xl">Jadwal Anda</h3>
+    <div className="animate-fadeIn">
+      <div className="container mx-auto bg-gradient-to-r from-[#FEBF00] to-[#FFD700] rounded-2xl p-6 mb-8 shadow-lg">
+        <div className="flex items-center space-x-3 mb-2">
+          <CreditCard className="text-white" size={24} />
+          <h3 className="text-white font-bold text-2xl">Jadwal Pembayaran</h3>
         </div>
-        <div className="flex flex-col items-start bg-white rounded-md p-5 mt-4">
-          <div className="flex justify-between w-full">
-            <h1 className="text-1xl text-black font-medium">Total Tagihan</h1>
-            <span className="text-1xl text-[black] font-medium">
+        <div className="flex flex-col items-start bg-white rounded-xl p-6 mt-4 shadow-md">
+          <div className="flex justify-between w-full items-center">
+            <h1 className="text-lg text-gray-800 font-medium">Total Tagihan</h1>
+            <span className="text-xl text-[#FEBF00] font-bold">
               Rp {roomData.hargaBulanan?.toLocaleString("id-ID") || "0"}
             </span>
           </div>
-          <div className="flex justify-between w-full mt-7">
-            <h1 className="text-1xl text-black font-medium">Status</h1>
-            <span className="text-1xl text-black font-medium">
-              {roomData.statusPembayaran || "Belum Dibayar"}
-            </span>
+          <div className="w-full h-px bg-gray-200 my-4"></div>
+          <div className="flex justify-between w-full items-center">
+            <div className="flex items-center">
+              <Clock className="text-[#FEBF00] mr-2" size={18} />
+              <h1 className="text-lg text-gray-800 font-medium">Status</h1>
+            </div>
+            {getStatusBadge(roomData.statusPembayaran)}
           </div>
           <button
-            className="bg-[#FEBF00] text-white rounded-lg py-4 mt-7 w-full text-lg font-bold"
+            className={`bg-gradient-to-r from-[#FEBF00] to-[#FFD700] text-white rounded-xl py-4 mt-6 w-full text-lg font-bold shadow-md hover:shadow-lg transform hover:translate-y-[-2px] transition-all duration-300 flex justify-center items-center ${
+              isPaymentProcessing || roomData.statusPembayaran === "Lunas"
+                ? "opacity-75 cursor-not-allowed"
+                : ""
+            }`}
             onClick={handlePayment}
             disabled={
               isPaymentProcessing || roomData.statusPembayaran === "Lunas"
             }
           >
-            {isPaymentProcessing
-              ? "MEMPROSES..."
-              : roomData.statusPembayaran === "Lunas"
-              ? "SUDAH DIBAYAR"
-              : "BAYAR SEKARANG"}
+            {isPaymentProcessing ? (
+              <>
+                <div className="mr-2 h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                MEMPROSES...
+              </>
+            ) : roomData.statusPembayaran === "Lunas" ? (
+              "SUDAH DIBAYAR"
+            ) : (
+              "BAYAR SEKARANG"
+            )}
           </button>
         </div>
       </div>
 
-      <div className="bg-[#FEBF00] rounded-md p-5 mt-4">
-        <div className="">
-          <h1 className="text-2xl text-white font-extrabold mb-7 mt-3">
-            Pembayaran Admin
-          </h1>
+      <div className="bg-gradient-to-r from-[#FEBF00] to-[#FFD700] rounded-2xl p-6 mt-6 shadow-lg">
+        <div className="flex items-center space-x-3 mb-4">
+          <Calendar className="text-white" size={24} />
+          <h1 className="text-2xl text-white font-bold">Pembayaran Admin</h1>
         </div>
-        <div className="bg-white rounded-md p-5">
-          <p className="text-black font-medium mb-4">
+        <div className="bg-white rounded-xl p-5 shadow-md">
+          <p className="text-gray-600 mb-4">
             Tidak dapat melakukan pembayaran online? Hubungi admin untuk
             melakukan pembayaran langsung.
           </p>
           <button
             onClick={handleAdminPayment}
-            className="w-full bg-[#FEBF00] text-white rounded-lg py-4 font-bold"
+            className="w-full bg-gradient-to-r from-[#FEBF00] to-[#FFD700] text-white rounded-xl py-4 font-bold shadow-md hover:shadow-lg transform hover:translate-y-[-2px] transition-all duration-300"
           >
             HUBUNGI ADMIN
           </button>

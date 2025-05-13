@@ -1,6 +1,6 @@
 import BackButtonOrange from "../image/chevron-right.svg";
 import React, { useState, useEffect } from "react";
-import { Calendar, DollarSign, AlertCircle } from "lucide-react";
+import { Calendar, DollarSign, AlertCircle, Check, Clock } from "lucide-react";
 import axios from "axios";
 import Swal from "sweetalert2";
 
@@ -51,16 +51,28 @@ const Contact = () => {
 
     try {
       // Update room payment status
-      const updatedRoom = { ...roomData, statusPembayaran: "Lunas" };
+      const updatedRoom = { ...roomData, statusPembayaran: "Menunggu" };
       await axios.put(
         `https://manage-kost-production.up.railway.app/api/kamar/${roomData.id}`,
         updatedRoom
       );
       setRoomData(updatedRoom);
-      alert("Pembayaran berhasil!");
+      Swal.fire({
+        title: "Pembayaran Sedang Diproses",
+        text: "Mohon tunggu konfirmasi dari admin. Status pembayaran Anda akan diperbarui segera.",
+        icon: "info",
+        confirmButtonText: "Mengerti",
+        confirmButtonColor: "#FEBF00",
+      });
     } catch (err) {
       console.error("Error processing payment:", err);
-      alert("Pembayaran gagal. Silakan coba lagi.");
+      Swal.fire({
+        title: "Pembayaran Gagal",
+        text: "Terjadi kesalahan. Silakan coba lagi nanti.",
+        icon: "error",
+        confirmButtonText: "Tutup",
+        confirmButtonColor: "#FEBF00",
+      });
     } finally {
       setIsPaymentProcessing(false);
     }
@@ -99,9 +111,37 @@ const Contact = () => {
     });
   };
 
+  const getStatusBadge = (status: string | undefined) => {
+    if (status === "Lunas") {
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+          <Check className="mr-1" size={14} />
+          Lunas
+        </span>
+      );
+    } else if (status === "Menunggu") {
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+          <Clock className="mr-1" size={14} />
+          Menunggu
+        </span>
+      );
+    } else {
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+          <AlertCircle className="mr-1" size={14} />
+          Belum Dibayar
+        </span>
+      );
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-40">Loading...</div>
+      <div className="flex justify-center items-center h-40">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#FFCC00]"></div>
+        <span className="ml-2 text-[#FFCC00] font-medium">Loading...</span>
+      </div>
     );
   }
 
@@ -114,8 +154,8 @@ const Contact = () => {
   }
 
   return (
-    <div>
-      <div className="container mx-auto bg-[#FFCC00] rounded-2xl p-6 mb-9 shadow-lg transform transition-all hover:shadow-xl">
+    <div className="animate-fadeIn">
+      <div className="container mx-auto bg-gradient-to-r from-[#FFCC00] to-[#FFB700] rounded-2xl p-6 mb-9 shadow-lg transform transition-all hover:shadow-xl">
         <div className="flex items-center space-x-3 mb-2">
           <h3 className="text-white font-bold text-2xl">Jadwal Pembayaran</h3>
           <DollarSign className="text-white" size={24} />
@@ -132,20 +172,10 @@ const Contact = () => {
               <AlertCircle size={18} className="text-[#FFCC00]" />
               <h1 className="text-gray-700 font-medium">Status</h1>
             </div>
-            <span
-              className={`text-white font-semibold px-3 py-1 rounded-lg ${
-                roomData.statusPembayaran === "Lunas"
-                  ? "bg-green-500"
-                  : roomData.statusPembayaran === "Menunggu"
-                  ? "bg-yellow-500"
-                  : "bg-orange-500"
-              }`}
-            >
-              {roomData.statusPembayaran || "Belum Dibayar"}
-            </span>
+            {getStatusBadge(roomData.statusPembayaran)}
           </div>
           <button
-            className="bg-[#FFCC00] text-white rounded-xl py-4 mt-2 w-full text-lg font-bold shadow-md transform transition-transform hover:scale-[1.02] hover:bg-[#FFA500]"
+            className="bg-gradient-to-r from-[#FFCC00] to-[#FFB700] text-white rounded-xl py-4 mt-2 w-full text-lg font-bold shadow-md transform transition-transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed"
             onClick={handlePayment}
             disabled={
               isPaymentProcessing || roomData.statusPembayaran === "Lunas"
@@ -165,9 +195,10 @@ const Contact = () => {
         </div>
       </div>
 
-      <div className="bg-[#FFCC00] rounded-2xl p-6 mt-6 shadow-lg transform transition-all hover:shadow-xl">
+      <div className="bg-gradient-to-r from-[#FFCC00] to-[#FFB700] rounded-2xl p-6 mt-6 shadow-lg transform transition-all hover:shadow-xl">
         <div className="mb-4">
-          <h1 className="text-2xl text-white font-bold mb-1">
+          <h1 className="text-2xl text-white font-bold mb-1 flex items-center">
+            <Calendar className="mr-2" size={20} />
             Pembayaran Admin
           </h1>
           <p className="text-white text-opacity-80 text-sm">
@@ -181,7 +212,7 @@ const Contact = () => {
           </p>
           <button
             onClick={handleAdminPayment}
-            className="w-full bg-[#FFCC00] text-white rounded-xl py-4 font-bold shadow-md transform transition-transform hover:scale-[1.02] hover:bg-[#FFA500]"
+            className="w-full bg-gradient-to-r from-[#FFCC00] to-[#FFB700] text-white rounded-xl py-4 font-bold shadow-md transform transition-transform hover:scale-[1.02]"
           >
             HUBUNGI ADMIN
           </button>
