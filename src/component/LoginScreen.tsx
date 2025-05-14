@@ -179,6 +179,16 @@ const LoginScreen = ({
       const data = response.data;
       setIsLoggedIn(true);
 
+      // Simpan data pengguna ke localStorage
+      localStorage.setItem(
+        "userData",
+        JSON.stringify({
+          username: data.username,
+          email: data.email,
+          phoneNumber: data.phoneNumber,
+        })
+      );
+
       // Set roomId if available
       if (data.roomId) {
         setRoomId(data.roomId);

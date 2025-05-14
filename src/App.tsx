@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Analytics } from "@vercel/analytics/react";
-import { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Route,
@@ -73,6 +72,8 @@ import { Home as HomeIcon } from "lucide-react"; // Import the house icon from L
 import Cookies from "js-cookie"; // Import js-cookie
 import { API_BASE_URL } from "./data/Config";
 import axios from "axios";
+import { testSupabaseConnection } from "./utils/testSupabase";
+import { runDiagnostic } from "./utils/testSupabase";
 
 declare global {
   interface Window {
@@ -82,6 +83,21 @@ declare global {
 }
 
 export function App() {
+  useEffect(() => {
+    // Jalankan diagnosis saat aplikasi dimulai
+    runDiagnostic().then((result) => {
+      if (!result.success) {
+        console.error("Diagnosis Supabase gagal:", result.error);
+        // Tampilkan notifikasi error jika diperlukan
+      } else {
+        console.log("Diagnosis Supabase berhasil:", result);
+      }
+    });
+
+    // Test Supabase connection on app start
+    testSupabaseConnection();
+  }, []);
+
   return (
     <>
       {/* Main routing / other layout */}

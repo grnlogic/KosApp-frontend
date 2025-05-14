@@ -705,7 +705,7 @@ export default function EditAkunPenghuni() {
 
       // Make a real API call to reset the password without auth header
       const response = await axios.put(
-        `${API_URL}/users/${selectedUser.id}/reset-password`,
+        `${API_URL}/api/users/${selectedUser.id}/reset-password`,
         { newPassword }
       );
 

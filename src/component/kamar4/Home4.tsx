@@ -159,12 +159,7 @@ const Home4 = () => {
               </div>
             )}
           </div>
-          <button
-            onClick={() => navigate("/profile4")}
-            className="absolute bottom-2 right-[-40px] bg-white p-2.5 rounded-full shadow-lg hover:bg-gray-100 transition-colors"
-          >
-            <Camera size={18} className="text-[#FF7A00]" />
-          </button>
+          
           <input
             type="file"
             ref={fileInputRef}

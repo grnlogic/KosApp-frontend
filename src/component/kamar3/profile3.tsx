@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Home,
   User,
@@ -14,20 +14,25 @@ import {
   Check,
 } from "lucide-react";
 import { uploadImage, fetchProfileImage } from "../../utils/imageUpload";
+import { supabase } from "../../utils/supabaseClient";
 import Swal from "sweetalert2";
 import AvatarEditor from "react-avatar-editor";
 
 export default function ProfilePage() {
   // User profile state
   const [profile, setProfile] = useState({
-    name: "Budi Santoso",
+    name: "",
     room: "Kamar 3",
-    phone: "+62 812-3456-7890",
-    email: "budi.santoso@email.com",
-    address: "Jl. Merdeka No. 123, Jakarta",
-    joinDate: "1 Januari 2023",
-    bio: "Mahasiswa Teknik Informatika di Universitas Indonesia. Suka membaca dan bermain gitar di waktu luang.",
+    phone: "",
+    email: "",
+    bio: "",
   });
+
+  // Loading states
+  const [loadingBio, setLoadingBio] = useState(false);
+  const [loadingImage, setLoadingImage] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [savingChanges, setSavingChanges] = useState(false);
 
   //Profile pictur
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
@@ -38,12 +43,10 @@ export default function ProfilePage() {
   const [editProfile, setEditProfile] = useState(false);
   const [editingName, setEditingName] = useState(profile.name);
   const [editingEmail, setEditingEmail] = useState(profile.email);
-  const [edingAddress, setEditingAddress] = useState(profile.address);
   const [editingPhone, setEditingPhone] = useState(profile.phone);
   const [tempBio, setTempBio] = useState(profile.bio);
   const [tempName, setTempName] = useState(profile.name);
   const [tempEmail, setTempEmail] = useState(profile.email);
-  const [tempAddress, setTempAddress] = useState(profile.address);
   const [tempPhone, setTempPhone] = useState(profile.phone);
 
   // Image cropping state
@@ -82,6 +85,7 @@ export default function ProfilePage() {
       canvas.toBlob(async (blob) => {
         if (blob) {
           try {
+            setLoadingImage(true);
             const roomId = profile.room.replace("Kamar ", "");
             Swal.fire({
               title: "Mengunggah gambar...",
@@ -119,6 +123,8 @@ export default function ProfilePage() {
               title: "Oops...",
               text: "Gagal mengunggah gambar. Silakan coba lagi.",
             });
+          } finally {
+            setLoadingImage(false);
           }
         }
       }, "image/png");
@@ -132,6 +138,94 @@ export default function ProfilePage() {
     }
   };
 
+  // Fetch bio from Supabase
+  const fetchBio = async (roomId: string | number) => {
+    try {
+      setLoadingBio(true);
+      setLoadingProfile(true);
+      console.log("Mencoba mengambil bio untuk kamar 3...");
+
+      // Periksa apakah koneksi ke Supabase berfungsi
+      const testConnection = await supabase
+        .from("penghuni")
+        .select("*")
+        .limit(1);
+      if (testConnection.error) {
+        console.error("Koneksi ke Supabase gagal:", testConnection.error);
+        Swal.fire({
+          icon: "error",
+          title: "Koneksi Database Gagal",
+          text: "Tidak dapat terhubung ke Supabase. Periksa koneksi internet Anda.",
+        });
+        return;
+      } else {
+        console.log("Test koneksi berhasil:", testConnection.data);
+      }
+
+      // Use hardcoded ID 3 for Kamar 3
+      const id = 3;
+
+      const { data, error } = await supabase
+        .from("penghuni")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        console.error("Gagal ambil bio:", error);
+        return;
+      }
+
+      console.log("Data bio yang diterima:", data);
+      if (data) {
+        setProfile({
+          name: data.nama || "",
+          room: "Kamar 3",
+          phone: data.telepon || "",
+          email: data.email || "",
+          bio: data.Bio || "",
+        });
+        setTempBio(data.Bio || "");
+        setTempName(data.nama || "");
+        setTempEmail(data.email || "");
+        setTempPhone(data.telepon || "");
+      }
+    } catch (error) {
+      console.error("Error fetching bio:", error);
+    } finally {
+      setLoadingBio(false);
+      setLoadingProfile(false);
+    }
+  };
+
+  // Update bio in Supabase with better error handling
+  const updateBio = async (id: string | number, newBio: string) => {
+    try {
+      console.log("Menyimpan bio untuk id=3:", newBio);
+
+      const { data, error } = await supabase
+        .from("penghuni")
+        .update({ Bio: newBio })
+        .eq("id", 3);
+
+      if (error) {
+        console.error("Gagal update bio:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Gagal Menyimpan",
+          text: `Error: ${error.message}. Pastikan Anda memiliki akses untuk menulis ke database.`,
+        });
+        throw error;
+      }
+
+      console.log("Bio berhasil diperbarui untuk id=3");
+      return data;
+    } catch (error) {
+      console.error("Error saat memperbarui bio:", error);
+      throw error;
+    }
+  };
+
   // Update save functions with SweetAlert
   const saveBio = () => {
     Swal.fire({
@@ -142,20 +236,46 @@ export default function ProfilePage() {
       cancelButtonColor: "#d33",
       confirmButtonText: "Simpan",
       cancelButtonText: "Batal",
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        setProfile({
-          ...profile,
-          bio: tempBio,
-        });
-        setEditBio(false);
-        Swal.fire({
-          position: "top-end",
-          icon: "success",
-          title: "Bio berhasil diperbarui!",
-          showConfirmButton: false,
-          timer: 1500,
-        });
+        try {
+          setSavingChanges(true);
+          Swal.fire({
+            title: "Menyimpan...",
+            didOpen: () => {
+              Swal.showLoading();
+            },
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+          });
+
+          // Update bio in Supabase
+          await updateBio(profile.room, tempBio);
+
+          // Update local state
+          setProfile({
+            ...profile,
+            bio: tempBio,
+          });
+          setEditBio(false);
+
+          Swal.fire({
+            position: "top-end",
+            icon: "success",
+            title: "Bio berhasil diperbarui!",
+            showConfirmButton: false,
+            timer: 1500,
+          });
+        } catch (error) {
+          console.error("Error updating bio:", error);
+          Swal.fire({
+            icon: "error",
+            title: "Gagal menyimpan bio",
+            text: "Terjadi kesalahan saat menyimpan bio Anda. Silakan coba lagi.",
+          });
+        } finally {
+          setSavingChanges(false);
+        }
       }
     });
   };
@@ -188,7 +308,44 @@ export default function ProfilePage() {
     });
   };
 
-  //save email
+  // Add function to update user data in the backend
+  const updateUserProfile = async (field: string, value: string) => {
+    try {
+      const token = localStorage.getItem("authToken");
+
+      if (!token) {
+        throw new Error("No auth token found");
+      }
+
+      // Only allow updating email or phoneNumber
+      if (field !== "email" && field !== "phoneNumber") {
+        throw new Error("Cannot update this field");
+      }
+
+      const response = await fetch(
+        "https://backend-kos-app.up.railway.app/api/auth/update-profile",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ [field]: value }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update profile: ${response.status}`);
+      }
+
+      return true;
+    } catch (error) {
+      console.error(`Error updating ${field}:`, error);
+      throw error;
+    }
+  };
+
+  // Update saveEmail function to use API
   const saveEmail = () => {
     Swal.fire({
       title: "Simpan perubahan email?",
@@ -198,53 +355,50 @@ export default function ProfilePage() {
       cancelButtonColor: "#d33",
       confirmButtonText: "Simpan",
       cancelButtonText: "Batal",
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        setProfile({
-          ...profile,
-          email: tempEmail,
-        });
-        setEditProfile(false);
-        Swal.fire({
-          position: "top-end",
-          icon: "success",
-          title: "Email berhasil diperbarui!",
-          showConfirmButton: false,
-          timer: 1500,
-        });
+        try {
+          setSavingChanges(true);
+          Swal.fire({
+            title: "Menyimpan...",
+            didOpen: () => {
+              Swal.showLoading();
+            },
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+          });
+
+          // Update email in backend
+          await updateUserProfile("email", tempEmail);
+
+          // Update local state
+          setProfile({
+            ...profile,
+            email: tempEmail,
+          });
+          setEditProfile(false);
+
+          Swal.fire({
+            position: "top-end",
+            icon: "success",
+            title: "Email berhasil diperbarui!",
+            showConfirmButton: false,
+            timer: 1500,
+          });
+        } catch (error) {
+          Swal.fire({
+            icon: "error",
+            title: "Gagal menyimpan email",
+            text: "Terjadi kesalahan saat menyimpan email Anda. Silakan coba lagi.",
+          });
+        } finally {
+          setSavingChanges(false);
+        }
       }
     });
   };
 
-  //save address
-  const saveAddress = () => {
-    Swal.fire({
-      title: "Simpan perubahan alamat?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#FFCC00",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Simpan",
-      cancelButtonText: "Batal",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        setProfile({
-          ...profile,
-          address: tempAddress,
-        });
-        setEditProfile(false);
-        Swal.fire({
-          position: "top-end",
-          icon: "success",
-          title: "Alamat berhasil diperbarui!",
-          showConfirmButton: false,
-          timer: 1500,
-        });
-      }
-    });
-  };
-
-  //save phone
+  // Update savePhone function to use API
   const savePhone = () => {
     Swal.fire({
       title: "Simpan perubahan nomor telepon?",
@@ -254,20 +408,45 @@ export default function ProfilePage() {
       cancelButtonColor: "#d33",
       confirmButtonText: "Simpan",
       cancelButtonText: "Batal",
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        setProfile({
-          ...profile,
-          phone: tempPhone,
-        });
-        setEditProfile(false);
-        Swal.fire({
-          position: "top-end",
-          icon: "success",
-          title: "Nomor telepon berhasil diperbarui!",
-          showConfirmButton: false,
-          timer: 1500,
-        });
+        try {
+          setSavingChanges(true);
+          Swal.fire({
+            title: "Menyimpan...",
+            didOpen: () => {
+              Swal.showLoading();
+            },
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+          });
+
+          // Update phone in backend
+          await updateUserProfile("phoneNumber", tempPhone);
+
+          // Update local state
+          setProfile({
+            ...profile,
+            phone: tempPhone,
+          });
+          setEditProfile(false);
+
+          Swal.fire({
+            position: "top-end",
+            icon: "success",
+            title: "Nomor telepon berhasil diperbarui!",
+            showConfirmButton: false,
+            timer: 1500,
+          });
+        } catch (error) {
+          Swal.fire({
+            icon: "error",
+            title: "Gagal menyimpan nomor telepon",
+            text: "Terjadi kesalahan saat menyimpan nomor telepon Anda. Silakan coba lagi.",
+          });
+        } finally {
+          setSavingChanges(false);
+        }
       }
     });
   };
@@ -290,20 +469,19 @@ export default function ProfilePage() {
     setEditProfile(false);
   };
 
-  //cancel address
-  const cancelAddress = () => {
-    setTempAddress(profile.address);
-    setEditProfile(false);
-  };
-
   //cancel phone
   const cancelPhone = () => {
     setTempPhone(profile.phone);
     setEditProfile(false);
   };
 
+  // Add useEffect to fetch bio on component mount
+  useEffect(() => {
+    fetchBio(profile.room);
+  }, []);
+
   // Add useEffect to load saved profile picture
-  React.useEffect(() => {
+  useEffect(() => {
     async function loadProfileImage() {
       try {
         const roomId = profile.room.replace("Kamar ", "");
@@ -319,304 +497,366 @@ export default function ProfilePage() {
     loadProfileImage();
   }, [profile.room]);
 
+  // Add this function to fetch user profile
+  const fetchUserProfile = async () => {
+    try {
+      setLoadingProfile(true);
+
+      // Get auth token from localStorage
+      const token = localStorage.getItem("authToken");
+
+      if (!token) {
+        console.error("No auth token found");
+        return;
+      }
+
+      const response = await fetch(
+        "https://backend-kos-app.up.railway.app/api/auth/user-info",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch profile: ${response.status}`);
+      }
+
+      const userData = await response.json();
+      console.log("User data from backend:", userData);
+
+      // Update profile state with backend data
+      setProfile({
+        name: userData.username || "", // Username comes from backend
+        room: "Kamar 3",
+        phone: userData.phoneNumber || "",
+        email: userData.email || "",
+        bio: profile.bio, // Keep existing bio if available
+      });
+
+      // Also update temp values
+      setTempPhone(userData.phoneNumber || "");
+      setTempEmail(userData.email || "");
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to load profile",
+        text: "Could not connect to the server. Please try again later.",
+      });
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  // Update the useEffect
+  useEffect(() => {
+    // First fetch user profile from backend
+    fetchUserProfile();
+
+    // Then fetch bio from Supabase if needed
+    fetchBio(profile.room);
+  }, []);
+
   return (
-    <div className="flex flex-col min-h-screen bg-[#FFF8E7]">
+    <div className="flex flex-col min-h-screen bg-[#FFF8E7] relative">
+      {/* Decorative Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-[#FFCC00]/10 blur-3xl"></div>
+        <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full bg-[#FFCC00]/10 blur-3xl"></div>
+        <div className="grid grid-cols-6 gap-4 opacity-5 absolute inset-0">
+          {[...Array(24)].map((_, i) => (
+            <div key={i} className="w-2 h-2 rounded-full bg-[#FFCC00]"></div>
+          ))}
+        </div>
+      </div>
+
       {/* Header */}
-      <header className="bg-[#FFCC00] p-5 flex justify-between items-center rounded-b-2xl shadow-md">
-        <h1 className="text-white text-xl font-bold">MiminKost</h1>
+      <header className="bg-[#FFCC00] p-5 flex justify-between items-center rounded-b-2xl shadow-md z-10 relative">
+        <h1 className="text-white text-xl font-bold flex items-center gap-2">
+          <span className="bg-white text-[#FFCC00] w-8 h-8 rounded-full flex items-center justify-center font-bold">
+            M
+          </span>
+          MiminKost
+        </h1>
         <div className="flex gap-5">
           <Home
-            className="text-white hover:scale-110 transition-transform"
+            className="text-white hover:scale-110 transition-transform duration-200 cursor-pointer"
             size={24}
           />
           <User
-            className="text-white hover:scale-110 transition-transform"
+            className="text-white hover:scale-110 transition-transform duration-200 cursor-pointer"
             size={24}
           />
           <LogOut
-            className="text-white hover:scale-110 transition-transform"
+            className="text-white hover:scale-110 transition-transform duration-200 cursor-pointer"
             size={24}
           />
         </div>
       </header>
 
-      {/* Profile Header */}
-      <div className="bg-[#FFCC00] m-5 p-6 rounded-2xl shadow-lg relative transition-all hover:shadow-xl">
-        <div className="flex flex-col items-center">
-          {/* Profile Picture */}
-          <div className="relative mb-5">
-            <div className="w-28 h-28 rounded-full overflow-hidden bg-white border-4 border-white shadow-md">
-              {profilePicture ? (
-                <img
-                  src={profilePicture}
-                  alt="Profile"
-                  className="w-full h-full object-cover transition-all"
-                  onError={(e) => {
-                    console.error("Error loading image:", e);
-                    e.currentTarget.onerror = null; // Prevent infinite error loop
-                    e.currentTarget.src = "/placeholder.svg"; // Fall back to placeholder
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                  <User size={42} className="text-gray-400" />
-                </div>
-              )}
-            </div>
-            <button
-              onClick={triggerInputClick}
-              className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md hover:bg-gray-50 transition-all transform hover:scale-110"
-            >
-              <Camera size={16} className="text-[#FFCC00]" />
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImageUpload}
-              className="hidden"
-              accept="image/*"
-            />
+      {loadingProfile ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center p-8">
+            <div className="inline-block w-8 h-8 border-4 border-[#FFCC00] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-600">Memuat profil...</p>
           </div>
+        </div>
+      ) : (
+        <>
+          {/* Profile Header */}
+          <div className="bg-[#FFCC00] m-5 p-6 rounded-2xl shadow-lg relative z-10 transform hover:scale-[1.01] transition-transform border-4 border-white">
+            {/* Status Badge */}
+            <div className="absolute -top-3 -right-3 bg-white text-[#FFCC00] px-3 py-1 rounded-full text-sm font-bold shadow-md flex items-center gap-1">
+              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+              <span>Active</span>
+            </div>
 
-          {/* Name */}
-          <div className="flex items-center gap-2 mb-1">
-            {editProfile ? (
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col items-center">
+              {/* Profile Picture */}
+              <div className="relative mb-5">
+                <div className="w-32 h-32 rounded-full overflow-hidden bg-white border-4 border-white shadow-md hover:shadow-lg transition-all duration-300">
+                  {profilePicture ? (
+                    <img
+                      src={profilePicture}
+                      alt="Profile"
+                      className="w-full h-full object-cover hover:scale-110 transition-all duration-500"
+                      onError={(e) => {
+                        console.error("Error loading image:", e);
+                        e.currentTarget.onerror = null; // Prevent infinite error loop
+                        e.currentTarget.src = "/placeholder.svg"; // Fall back to placeholder
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                      <User size={42} className="text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={triggerInputClick}
+                  className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md hover:bg-gray-50 transition-all transform hover:scale-110 border-2 border-[#FFCC00]"
+                >
+                  <Camera size={16} className="text-[#FFCC00]" />
+                </button>
                 <input
-                  type="text"
-                  value={tempName}
-                  onChange={(e) => setTempName(e.target.value)}
-                  className="bg-white rounded-lg px-3 py-2 text-gray-800 text-center shadow focus:ring-2 focus:ring-[#FFA500] outline-none"
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  accept="image/*"
                 />
-                <button
-                  onClick={saveName}
-                  className="text-white hover:scale-110 transition-transform"
-                >
-                  <Save size={18} />
-                </button>
-                <button
-                  onClick={cancelName}
-                  className="text-white hover:scale-110 transition-transform"
-                >
-                  <X size={18} />
-                </button>
               </div>
-            ) : (
-              <>
-                <h2 className="text-white text-xl font-bold">{profile.name}</h2>
-                <button
-                  onClick={() => setEditProfile(true)}
-                  className="text-white hover:scale-110 transition-transform"
-                >
-                  <Edit size={18} />
-                </button>
-              </>
-            )}
+
+              {/* Name */}
+              <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-white text-2xl font-bold drop-shadow-sm">
+                  {profile.name}
+                </h2>
+                {/* Remove the edit button for username */}
+              </div>
+
+              {/* Room Number */}
+              <p className="text-white font-medium bg-[#FFA500] px-4 py-1 rounded-full text-sm shadow-inner">
+                {profile.room}
+              </p>
+            </div>
           </div>
 
-          {/* Room Number */}
-          <p className="text-white font-medium bg-[#FFA500] px-4 py-1 rounded-full text-sm">
-            {profile.room}
-          </p>
-        </div>
-      </div>
+          {/* Profile Content */}
+          <div className="flex-1 px-5 pb-5 z-10 relative">
+            {/* Bio Section */}
+            <div className="bg-[#FFCC00] rounded-2xl shadow-lg mb-5 overflow-hidden transition-all hover:shadow-xl border-2 border-white">
+              <div className="p-4 flex justify-between items-center">
+                <h3 className="font-semibold text-white text-lg flex items-center gap-2">
+                  <div className="bg-white w-6 h-6 rounded-full flex items-center justify-center">
+                    <span className="text-[#FFCC00] text-xs font-bold">
+                      Bio
+                    </span>
+                  </div>
+                  <span>Tentang Saya</span>
+                </h3>
+                {!editBio && (
+                  <button
+                    onClick={() => setEditBio(true)}
+                    className="text-white bg-[#FFA500] p-2 rounded-full hover:scale-110 transition-transform"
+                  >
+                    <Edit size={16} />
+                  </button>
+                )}
+              </div>
+              <div className="bg-white p-5 rounded-b-2xl">
+                {editBio ? (
+                  <div className="space-y-3">
+                    <textarea
+                      value={tempBio}
+                      onChange={(e) => setTempBio(e.target.value)}
+                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#FFCC00] focus:border-transparent outline-none transition-all shadow-inner"
+                      rows={4}
+                      placeholder="Tuliskan bio Anda di sini..."
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={saveBio}
+                        className="bg-[#FFCC00] text-white px-4 py-2 rounded-xl flex items-center gap-2 shadow hover:bg-[#FFA500] transition-colors"
+                      >
+                        <Save size={16} />
+                        <span>Simpan</span>
+                      </button>
+                      <button
+                        onClick={cancelBio}
+                        className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-gray-200 transition-colors"
+                      >
+                        <X size={16} />
+                        <span>Batal</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-[#FFF8E7]/50 p-4 rounded-lg border border-[#FFF8E7]">
+                    <p className="text-gray-700 leading-relaxed">
+                      {profile.bio}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
 
-      {/* Profile Content */}
-      <div className="flex-1 px-5 pb-5">
-        {/* Bio Section */}
-        <div className="bg-[#FFCC00] rounded-2xl shadow-lg mb-5 overflow-hidden transition-all hover:shadow-xl">
-          <div className="p-4 flex justify-between items-center">
-            <h3 className="font-semibold text-white text-lg">Bio</h3>
-            {!editBio && (
-              <button
-                onClick={() => setEditBio(true)}
-                className="text-white bg-[#FFA500] p-2 rounded-full hover:scale-110 transition-transform"
-              >
-                <Edit size={16} />
-              </button>
-            )}
-          </div>
-          <div className="bg-white p-5 rounded-b-2xl">
-            {editBio ? (
-              <div className="space-y-3">
-                <textarea
-                  value={tempBio}
-                  onChange={(e) => setTempBio(e.target.value)}
-                  className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#FFCC00] focus:border-transparent outline-none transition-all"
-                  rows={4}
-                />
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={saveBio}
-                    className="bg-[#FFCC00] text-white px-4 py-2 rounded-xl flex items-center gap-2 shadow hover:bg-[#FFA500] transition-colors"
-                  >
-                    <Save size={16} />
-                    <span>Simpan</span>
-                  </button>
-                  <button
-                    onClick={cancelBio}
-                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-gray-200 transition-colors"
-                  >
-                    <X size={16} />
-                    <span>Batal</span>
-                  </button>
+            {/* Contact Information */}
+            <div className="bg-[#FFCC00] rounded-2xl shadow-lg mb-5 overflow-hidden transition-all hover:shadow-xl border-2 border-white">
+              <div className="p-4">
+                <h3 className="font-semibold text-white text-lg flex items-center gap-2">
+                  <div className="bg-white w-6 h-6 rounded-full flex items-center justify-center">
+                    <span className="text-[#FFCC00] text-xs font-bold">
+                      Info
+                    </span>
+                  </div>
+                  <span>Informasi Kontak</span>
+                </h3>
+              </div>
+              <div className="bg-white p-5 rounded-b-2xl space-y-5">
+                {/* Phone */}
+                <div className="flex items-start gap-4 bg-[#FFF8E7]/50 p-3 rounded-lg border border-[#FFF8E7] hover:shadow-sm transition-shadow">
+                  <div className="bg-[#FFF8E7] p-3 rounded-xl">
+                    <Phone size={20} className="text-[#FFCC00]" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-gray-500 text-sm mb-1 font-medium">
+                      Nomor Telepon
+                    </p>
+                    {editProfile ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <input
+                          type="text"
+                          value={tempPhone}
+                          onChange={(e) => setTempPhone(e.target.value)}
+                          className="flex-1 bg-white rounded-lg px-3 py-2 text-gray-800 border border-gray-200 focus:ring-2 focus:ring-[#FFCC00] focus:border-transparent outline-none shadow-inner"
+                        />
+                        <button
+                          onClick={savePhone}
+                          className="text-[#FFCC00] hover:scale-110 transition-transform"
+                        >
+                          <Save size={18} />
+                        </button>
+                        <button
+                          onClick={cancelPhone}
+                          className="text-gray-400 hover:scale-110 transition-transform"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <p className="text-gray-700 font-medium">
+                          {profile.phone}
+                        </p>
+                        <button
+                          onClick={() => setEditProfile(true)}
+                          className="text-[#FFCC00] bg-gray-100 p-1 rounded-full hover:bg-gray-200 transition-colors"
+                        >
+                          <Edit size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div className="flex items-start gap-4 bg-[#FFF8E7]/50 p-3 rounded-lg border border-[#FFF8E7] hover:shadow-sm transition-shadow">
+                  <div className="bg-[#FFF8E7] p-3 rounded-xl">
+                    <Mail size={20} className="text-[#FFCC00]" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-gray-500 text-sm mb-1 font-medium">
+                      Email
+                    </p>
+                    {editProfile ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <input
+                          type="email"
+                          value={tempEmail}
+                          onChange={(e) => setTempEmail(e.target.value)}
+                          className="flex-1 bg-white rounded-lg px-3 py-2 text-gray-800 border border-gray-200 focus:ring-2 focus:ring-[#FFCC00] focus:border-transparent outline-none shadow-inner"
+                        />
+                        <button
+                          onClick={saveEmail}
+                          className="text-[#FFCC00] hover:scale-110 transition-transform"
+                        >
+                          <Save size={18} />
+                        </button>
+                        <button
+                          onClick={cancelEmail}
+                          className="text-gray-400 hover:scale-110 transition-transform"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <p className="text-gray-700 font-medium">
+                          {profile.email}
+                        </p>
+                        <button
+                          onClick={() => setEditProfile(true)}
+                          className="text-[#FFCC00] bg-gray-100 p-1 rounded-full hover:bg-gray-200 transition-colors"
+                        >
+                          <Edit size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stats Section */}
+                <div className="grid grid-cols-3 gap-3 mt-2">
+                  <div className="bg-[#FFF8E7] p-3 rounded-lg text-center shadow-sm hover:shadow transform hover:scale-105 transition-all">
+                    <p className="text-[#FFCC00] text-xl font-bold">8</p>
+                    <p className="text-gray-500 text-xs">Bulan</p>
+                  </div>
+                  <div className="bg-[#FFF8E7] p-3 rounded-lg text-center shadow-sm hover:shadow transform hover:scale-105 transition-all">
+                    <p className="text-[#FFCC00] text-xl font-bold">100%</p>
+                    <p className="text-gray-500 text-xs">Pembayaran</p>
+                  </div>
+                  <div className="bg-[#FFF8E7] p-3 rounded-lg text-center shadow-sm hover:shadow transform hover:scale-105 transition-all">
+                    <p className="text-[#FFCC00] text-xl font-bold">4.9★</p>
+                    <p className="text-gray-500 text-xs">Rating</p>
+                  </div>
+                </div>
+
+                {/* Tenure Info */}
+                <div className="bg-gradient-to-r from-[#FFCC00]/10 to-[#FFA500]/10 p-4 rounded-lg text-center">
+                  <p className="text-sm text-gray-600">
+                    Status keanggotaan{" "}
+                    <span className="font-medium text-[#FFCC00]">Premium</span>{" "}
+                    • Kamar <span className="font-medium">3</span>
+                  </p>
                 </div>
               </div>
-            ) : (
-              <p className="text-gray-700 leading-relaxed">{profile.bio}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Contact Information */}
-        <div className="bg-[#FFCC00] rounded-2xl shadow-lg mb-5 overflow-hidden transition-all hover:shadow-xl">
-          <div className="p-4">
-            <h3 className="font-semibold text-white text-lg mb-2">
-              Informasi Kontak
-            </h3>
-          </div>
-          <div className="bg-white p-5 rounded-b-2xl space-y-5">
-            {/* Phone */}
-            <div className="flex items-start gap-4">
-              <div className="bg-[#FFF8E7] p-3 rounded-xl">
-                <Phone size={20} className="text-[#FFCC00]" />
-              </div>
-              <div className="flex-1">
-                <p className="text-gray-500 text-sm mb-1">Nomor Telepon</p>
-                {editProfile ? (
-                  <div className="flex items-center gap-2 mt-1">
-                    <input
-                      type="text"
-                      value={tempPhone}
-                      onChange={(e) => setTempPhone(e.target.value)}
-                      className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-gray-800 border border-gray-200 focus:ring-2 focus:ring-[#FFCC00] focus:border-transparent outline-none"
-                    />
-                    <button
-                      onClick={savePhone}
-                      className="text-[#FFCC00] hover:scale-110 transition-transform"
-                    >
-                      <Save size={18} />
-                    </button>
-                    <button
-                      onClick={cancelPhone}
-                      className="text-gray-400 hover:scale-110 transition-transform"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <p className="text-gray-700 font-medium">{profile.phone}</p>
-                    <button
-                      onClick={() => setEditProfile(true)}
-                      className="text-[#FFCC00] bg-gray-100 p-1 rounded-full hover:bg-gray-200 transition-colors"
-                    >
-                      <Edit size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Email */}
-            <div className="flex items-start gap-4">
-              <div className="bg-[#FFF8E7] p-3 rounded-xl">
-                <Mail size={20} className="text-[#FFCC00]" />
-              </div>
-              <div className="flex-1">
-                <p className="text-gray-500 text-sm mb-1">Email</p>
-                {editProfile ? (
-                  <div className="flex items-center gap-2 mt-1">
-                    <input
-                      type="email"
-                      value={tempEmail}
-                      onChange={(e) => setTempEmail(e.target.value)}
-                      className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-gray-800 border border-gray-200 focus:ring-2 focus:ring-[#FFCC00] focus:border-transparent outline-none"
-                    />
-                    <button
-                      onClick={saveEmail}
-                      className="text-[#FFCC00] hover:scale-110 transition-transform"
-                    >
-                      <Save size={18} />
-                    </button>
-                    <button
-                      onClick={cancelEmail}
-                      className="text-gray-400 hover:scale-110 transition-transform"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <p className="text-gray-700 font-medium">{profile.email}</p>
-                    <button
-                      onClick={() => setEditProfile(true)}
-                      className="text-[#FFCC00] bg-gray-100 p-1 rounded-full hover:bg-gray-200 transition-colors"
-                    >
-                      <Edit size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Address */}
-            <div className="flex items-start gap-4">
-              <div className="bg-[#FFF8E7] p-3 rounded-xl">
-                <MapPin size={20} className="text-[#FFCC00]" />
-              </div>
-              <div className="flex-1">
-                <p className="text-gray-500 text-sm mb-1">Alamat</p>
-                {editProfile ? (
-                  <div className="flex items-center gap-2 mt-1">
-                    <input
-                      type="text"
-                      value={tempAddress}
-                      onChange={(e) => setTempAddress(e.target.value)}
-                      className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-gray-800 border border-gray-200 focus:ring-2 focus:ring-[#FFCC00] focus:border-transparent outline-none"
-                    />
-                    <button
-                      onClick={saveAddress}
-                      className="text-[#FFCC00] hover:scale-110 transition-transform"
-                    >
-                      <Save size={18} />
-                    </button>
-                    <button
-                      onClick={cancelAddress}
-                      className="text-gray-400 hover:scale-110 transition-transform"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <p className="text-gray-700 font-medium">
-                      {profile.address}
-                    </p>
-                    <button
-                      onClick={() => setEditProfile(true)}
-                      className="text-[#FFCC00] bg-gray-100 p-1 rounded-full hover:bg-gray-200 transition-colors"
-                    >
-                      <Edit size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Join Date */}
-            <div className="flex items-start gap-4">
-              <div className="bg-[#FFF8E7] p-3 rounded-xl">
-                <Calendar size={20} className="text-[#FFCC00]" />
-              </div>
-              <div>
-                <p className="text-gray-500 text-sm mb-1">Tanggal Bergabung</p>
-                <p className="text-gray-700 font-medium">{profile.joinDate}</p>
-              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {/* Image Crop Modal */}
       {showCropModal && (
