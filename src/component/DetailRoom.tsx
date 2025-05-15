@@ -24,9 +24,22 @@ import Swal from "sweetalert2";
 import axios from "axios";
 import { authApi } from "../utils/apiUtils";
 
-// Lazy load the PDF library since it's only used on form submission
-const importJsPDF = () => import("jspdf").then((module) => module.jsPDF);
-const importAutoTable = () => import("jspdf-autotable");
+// Extend jsPDF type to include autoTable
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+
+// Add proper type definition for lastAutoTable property
+declare module "jspdf" {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+    lastAutoTable: {
+      finalY: number;
+      margin: any;
+      settings: any;
+      pageCount: number;
+    };
+  }
+}
 
 // Interface for room registration request
 interface RoomRegistrationRequest {
@@ -172,19 +185,14 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
   // Optimize PDF generation to be asynchronous
   const generatePDF = async () => {
     try {
-      // Dynamically import libraries only when needed
-      const [jsPDF, autoTable] = await Promise.all([
-        importJsPDF(),
-        importAutoTable(),
-      ]);
-
+      // Create jsPDF instance directly
       const doc = new jsPDF();
 
       // Add margin
       const margin = 20;
       let y = margin;
 
-      // Header
+      // Header with logo-like styling
       doc.setFillColor(255, 193, 7); // Yellow color
       doc.rect(0, 0, doc.internal.pageSize.width, 40, "F");
       doc.setTextColor(0);
@@ -204,146 +212,193 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
         align: "center",
       });
 
-      // Add date
+      // Add date and reference number
       y = 50;
       const today = new Date();
+      const formattedDate = today.toLocaleDateString("id-ID", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+
+      // Registration number in a box for better visibility
+      doc.setFillColor(245, 245, 245);
+      doc.rect(130, y - 5, 65, 15, "F");
+      doc.rect(130, y - 5, 65, 15, "S");
+
       doc.setFontSize(10);
-      doc.text(
-        `Tanggal: ${today.toLocaleDateString("id-ID", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        })}`,
-        14,
-        y
-      );
+      doc.text(`Tanggal: ${formattedDate}`, 14, y);
 
-      // Referensi Nomor
       doc.setFont("helvetica", "bold");
-      doc.text("NO REGISTRASI:", 130, y);
-      y += 5;
+      doc.text("NO REGISTRASI:", 132, y);
       doc.setFont("helvetica", "normal");
-      doc.text(
-        `REG-${card.nomorKamar}-${today.getFullYear()}${(today.getMonth() + 1)
-          .toString()
-          .padStart(2, "0")}${today.getDate().toString().padStart(2, "0")}`,
-        130,
-        y
-      );
-      y += 15;
+      const regNumber = `REG-${card.nomorKamar}-${today.getFullYear()}${(
+        today.getMonth() + 1
+      )
+        .toString()
+        .padStart(2, "0")}${today.getDate().toString().padStart(2, "0")}`;
+      doc.text(regNumber, 132, y + 5);
+      y += 20;
 
-      // Personal Information
+      // Personal Information in table format
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.text("DATA PENYEWA", margin, y);
       y += 10;
 
-      // Create personal info table
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
+      // Create personal info table - use autoTable directly instead of doc.autoTable
+      const personalData = [
+        ["Nama Lengkap", ":", formData.fullName],
+        ["Nomor Telepon", ":", formData.phone],
+        ["Email", ":", formData.email],
+        ["Nomor KTP", ":", formData.idNumber],
+      ];
 
-      const drawRow = (label: string, value: string) => {
-        doc.text(label, margin, y);
-        doc.text(":", margin + 40, y);
-        doc.text(value, margin + 45, y);
-        y += 7;
-      };
+      autoTable(doc, {
+        startY: y,
+        body: personalData,
+        theme: "plain",
+        styles: { fontSize: 10, cellPadding: 2 },
+        columnStyles: {
+          0: { cellWidth: 40, fontStyle: "normal" },
+          1: { cellWidth: 5, fontStyle: "normal" },
+          2: { fontStyle: "normal" },
+        },
+      });
 
-      drawRow("Nama Lengkap", formData.fullName);
-      drawRow("Nomor Telepon", formData.phone);
-      drawRow("Email", formData.email);
-      drawRow("Nomor KTP", formData.idNumber);
-      y += 5;
+      y = doc.lastAutoTable.finalY + 10;
 
-      // Kamar Info
+      // Room Information in table format
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.text("INFORMASI KAMAR", margin, y);
       y += 10;
 
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
+      const roomData = [
+        ["Nomor Kamar", ":", card.nomorKamar],
+        ["Ukuran Kamar", ":", "3x4 meter"],
+        ["Fasilitas", ":", card.fasilitas],
+      ];
 
-      drawRow("Nomor Kamar", card.nomorKamar);
-      drawRow("Ukuran Kamar", "3x4 meter");
+      autoTable(doc, {
+        startY: y,
+        body: roomData,
+        theme: "plain",
+        styles: { fontSize: 10, cellPadding: 2 },
+        columnStyles: {
+          0: { cellWidth: 40, fontStyle: "normal" },
+          1: { cellWidth: 5, fontStyle: "normal" },
+          2: { fontStyle: "normal" },
+        },
+      });
 
-      // Add fasilitas with text wrapping
-      const fasilitas = card.fasilitas;
-      doc.text("Fasilitas", margin, y);
-      doc.text(":", margin + 40, y);
+      y = doc.lastAutoTable.finalY + 10;
 
-      const splitFasilitas = doc.splitTextToSize(fasilitas, 130);
-      doc.text(splitFasilitas, margin + 45, y);
-      y += splitFasilitas.length * 7 + 5;
-
-      // Rental Info
+      // Rental Info in table format
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.text("INFORMASI SEWA", margin, y);
       y += 10;
 
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
+      const rentalData = [
+        ["Tanggal Masuk", ":", formData.moveInDate],
+        ["Durasi Sewa", ":", `${formData.duration} bulan`],
+      ];
 
-      drawRow("Tanggal Masuk", formData.moveInDate);
-      drawRow("Durasi Sewa", `${formData.duration} bulan`);
-      y += 5;
+      autoTable(doc, {
+        startY: y,
+        body: rentalData,
+        theme: "plain",
+        styles: { fontSize: 10, cellPadding: 2 },
+        columnStyles: {
+          0: { cellWidth: 40, fontStyle: "normal" },
+          1: { cellWidth: 5, fontStyle: "normal" },
+          2: { fontStyle: "normal" },
+        },
+      });
 
-      // Payment Info
+      y = doc.lastAutoTable.finalY + 10;
+
+      // Payment Info with formal table
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.text("RINCIAN PEMBAYARAN", margin, y);
       y += 10;
 
-      // Table Header for Payment
-      doc.setFillColor(240, 240, 240);
-      doc.rect(margin, y, 170, 10, "F");
-      doc.rect(margin, y, 170, 10, "S");
+      const paymentHeaders = [["KETERANGAN", "HARGA", "JUMLAH", "TOTAL"]];
+      const paymentData = [
+        [
+          `Sewa Kamar ${card.nomorKamar} (${formData.duration} bulan)`,
+          `Rp ${formatPrice(card.hargaBulanan)}`,
+          formData.duration,
+          `Rp ${formatPrice(card.hargaBulanan * parseInt(formData.duration))}`,
+        ],
+        ["Biaya Administrasi", "Rp 20.000", "1", "Rp 20.000"],
+      ];
 
-      doc.setFontSize(10);
-      doc.text("KETERANGAN", margin + 5, y + 7);
-      doc.text("HARGA", margin + 80, y + 7);
-      doc.text("JUMLAH", margin + 110, y + 7);
-      doc.text("TOTAL", margin + 150, y + 7);
-      y += 10;
+      autoTable(doc, {
+        startY: y,
+        head: paymentHeaders,
+        body: paymentData,
+        theme: "grid",
+        styles: {
+          fontSize: 10,
+          cellPadding: 4,
+          halign: "left",
+          valign: "middle",
+          lineWidth: 0.1,
+        },
+        headStyles: {
+          fillColor: [255, 193, 7],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+        },
+        columnStyles: {
+          0: { cellWidth: 80 },
+          1: { cellWidth: 35, halign: "right" },
+          2: { cellWidth: 15, halign: "center" },
+          3: { cellWidth: 35, halign: "right" },
+        },
+      });
 
-      // Biaya Sewa
-      doc.rect(margin, y, 170, 10, "S");
-      doc.text(
-        `Sewa Kamar ${card.nomorKamar} (${formData.duration} bulan)`,
-        margin + 5,
-        y + 7
-      );
-      doc.text(`Rp ${formatPrice(card.hargaBulanan)}`, margin + 80, y + 7);
-      doc.text(formData.duration, margin + 110, y + 7);
-      doc.text(
-        `Rp ${formatPrice(card.hargaBulanan * parseInt(formData.duration))}`,
-        margin + 150,
-        y + 7
-      );
-      y += 10;
+      y = doc.lastAutoTable.finalY + 5;
 
-      // Biaya Administrasi (menggantikan Deposit)
-      doc.rect(margin, y, 170, 10, "S");
-      doc.text("Biaya Administrasi", margin + 5, y + 7);
-      doc.text(`Rp 20.000`, margin + 80, y + 7);
-      doc.text("1", margin + 110, y + 7);
-      doc.text(`Rp 20.000`, margin + 150, y + 7);
-      y += 15;
+      // Total with highlighted box
+      const totalData = [
+        [
+          {
+            content: "TOTAL PEMBAYARAN",
+            colSpan: 3,
+            styles: { fontStyle: "bold" as const },
+          },
+          {
+            content: `Rp ${formatPrice(
+              card.hargaBulanan * parseInt(formData.duration) + 20000
+            )}`,
+            styles: { fontStyle: "bold" as const },
+          },
+        ],
+      ];
 
-      // Total
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("TOTAL PEMBAYARAN", margin + 80, y);
-      doc.text(
-        `Rp ${formatPrice(
-          card.hargaBulanan * (parseInt(formData.duration) + 1)
-        )}`,
-        margin + 150,
-        y
-      );
-      y += 20;
+      autoTable(doc, {
+        startY: y,
+        body: totalData,
+        theme: "grid",
+        styles: {
+          fontSize: 12,
+          cellPadding: 4,
+          lineWidth: 0.1,
+        },
+        columnStyles: {
+          0: { cellWidth: 130, halign: "right" },
+          1: { cellWidth: 35, halign: "right" }, // Changed from 3 to 1 to match actual column index
+        },
+      });
+
+      // Ensure y is a valid number before using it in rect calls
+      y = doc.lastAutoTable.finalY + 10;
+      if (isNaN(y)) y = margin + 350; // Fallback value if y becomes NaN
 
       // Note
       if (formData.additionalNotes) {
@@ -360,18 +415,54 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
         y += 10;
       }
 
-      // Signature area
+      // Terms and conditions in a box
+      doc.setFillColor(245, 245, 245);
+      doc.rect(margin, y, 170, 25, "F");
+      doc.rect(margin, y, 170, 25, "S");
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("Syarat dan Ketentuan:", margin + 5, y + 7);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+
+      const terms = [
+        "1. Formulir ini harus dibawa saat check-in.",
+        "2. Pembayaran harus dilakukan maksimal 2x24 jam setelah konfirmasi diterima.",
+        "3. Deposit akan dikembalikan di akhir masa sewa jika tidak ada kerusakan.",
+        "4. Penyewa wajib mematuhi seluruh aturan yang berlaku di MIMIN KOST.",
+      ];
+
+      let termsY = y + 15;
+      terms.forEach((term) => {
+        doc.text(term, margin + 5, termsY);
+        termsY += 5;
+      });
+
+      y += 35;
+
+      // Signature area with lines and boxes
       doc.setFontSize(11);
-      doc.text("Penyewa", margin + 30, y);
-      doc.text("Pengelola", margin + 130, y);
+      doc.setFillColor(255, 255, 255);
 
-      y += 25;
-      doc.line(margin, y, margin + 60, y); // Signature line for tenant
-      doc.line(margin + 100, y, margin + 160, y); // Signature line for management
+      // Left signature box (tenant)
+      doc.rect(margin, y, 70, 40, "S");
+      doc.setFont("helvetica", "bold");
+      doc.text("Penyewa", margin + 25, y + 7);
+      doc.setFont("helvetica", "normal");
+      doc.text("Tanggal: ________________", margin + 5, y + 35);
 
-      y += 5;
-      doc.text(`( ${formData.fullName} )`, margin + 15, y);
-      doc.text("( Admin MIMIN KOST )", margin + 115, y);
+      // Right signature box (management)
+      doc.rect(margin + 100, y, 70, 40, "S");
+      doc.setFont("helvetica", "bold");
+      doc.text("Pengelola", margin + 125, y + 7);
+      doc.setFont("helvetica", "normal");
+      doc.text("Tanggal: ________________", margin + 105, y + 35);
+
+      // Names under signature boxes
+      y += 45;
+      doc.text(`( ${formData.fullName} )`, margin + 20, y);
+      doc.text("( Admin MIMIN KOST )", margin + 118, y);
 
       // Footer
       doc.setFillColor(255, 193, 7);
@@ -390,10 +481,98 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
         { align: "center" }
       );
 
+      // Page numbers
+      doc.setFontSize(8);
+      doc.text(
+        `Halaman 1 dari 1 | Dicetak pada: ${formattedDate}`,
+        doc.internal.pageSize.width - 20,
+        doc.internal.pageSize.height - 25,
+        { align: "right" }
+      );
+
       return doc;
     } catch (error) {
-      console.error("Error loading PDF libraries:", error);
+      console.error("Error generating PDF:", error);
       throw error;
+    }
+  };
+
+  // Function to download PDF
+  const downloadPDF = async () => {
+    try {
+      const doc = await generatePDF();
+      const pdfName = `Formulir_Sewa_Kamar_${
+        card.nomorKamar
+      }_${formData.fullName.replace(/\s+/g, "_")}.pdf`;
+      doc.save(pdfName);
+      return pdfName;
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      Swal.fire({
+        title: "Gagal Mengunduh PDF",
+        text: "Terjadi kesalahan saat mengunduh PDF. Silakan coba lagi.",
+        icon: "error",
+        confirmButtonColor: "#000",
+      });
+      throw error;
+    }
+  };
+
+  // Function to download PDF and open WhatsApp
+  const downloadPDFAndSendWhatsApp = async () => {
+    try {
+      // First download the PDF
+      const pdfName = await downloadPDF();
+
+      // Then open WhatsApp with a modified message that instructs to attach the PDF
+      const phoneNumber = "62895352281010"; // WhatsApp number without the + sign
+
+      // Construct the message with instructions about attaching the PDF
+      let message = `*PENGAJUAN SEWA KAMAR KOS*\n\n`;
+      message += `*Informasi Kamar:*\n`;
+      message += `- Nomor Kamar: ${card.nomorKamar}\n`;
+      message += `- Harga: Rp ${formatPrice(card.hargaBulanan)}/bulan\n\n`;
+
+      message += `*Data Penyewa:*\n`;
+      message += `- Nama: ${formData.fullName}\n`;
+      message += `- No. Telepon: ${formData.phone}\n`;
+      message += `- Email: ${formData.email}\n`;
+      message += `- No. KTP: ${formData.idNumber}\n\n`;
+
+      message += `*Informasi Sewa:*\n`;
+      message += `- Tanggal masuk: ${formData.moveInDate}\n`;
+      message += `- Durasi sewa: ${formData.duration} bulan\n`;
+      message += `- Total pembayaran awal: Rp ${formatPrice(
+        card.hargaBulanan * parseInt(formData.duration) + 20000
+      )}\n\n`;
+
+      if (formData.additionalNotes) {
+        message += `*Catatan:*\n${formData.additionalNotes}\n\n`;
+      }
+
+      message += `*PENTING: Saya telah mengunduh formulir pendaftaran dengan nama file "${pdfName}". Saya akan melampirkan file PDF tersebut dalam chat ini.*\n\n`;
+      message += `Terima kasih telah mengajukan penyewaan kamar di MIMIN KOST.`;
+
+      // Encode the message for URL
+      const encodedMessage = encodeURIComponent(message);
+
+      // Open WhatsApp in a new tab
+      window.open(
+        `https://wa.me/${phoneNumber}?text=${encodedMessage}`,
+        "_blank"
+      );
+
+      // Show tooltip to remind about attaching the PDF
+      Swal.fire({
+        title: "PDF Berhasil Diunduh!",
+        html: `Silakan <b>lampirkan file PDF</b> yang baru saja diunduh ke chat WhatsApp.<br><br>Nama file: <b>${pdfName}</b>`,
+        icon: "info",
+        confirmButtonColor: "#000",
+      });
+    } catch (error) {
+      console.error("Error in downloadPDFAndSendWhatsApp:", error);
+      // Show fallback option if PDF fails
+      openWhatsApp();
     }
   };
 
@@ -593,20 +772,21 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
       } catch (error) {
         console.error("Error sending room request:", error);
 
-        // Tampilkan error ke user
+        // Enhance error handling to include PDF options
         Swal.fire({
           title: "Gagal Mengirim Permintaan",
-          text: "Terjadi kesalahan saat mengirim permintaan sewa. Silakan coba lagi atau gunakan WhatsApp.",
+          text: "Terjadi kesalahan saat mengirim permintaan sewa. Silakan coba lagi atau gunakan PDF dan WhatsApp.",
           icon: "error",
+          showDenyButton: true,
           showCancelButton: true,
           confirmButtonText: "Coba Lagi",
-          cancelButtonText: "Kirim via WhatsApp",
+          denyButtonText: "PDF & WhatsApp",
+          cancelButtonText: "Batal",
         }).then((result) => {
-          if (
-            result.isDismissed ||
-            result.dismiss === Swal.DismissReason.cancel
-          ) {
-            openWhatsApp();
+          if (result.isDenied) {
+            downloadPDFAndSendWhatsApp();
+          } else if (result.dismiss === Swal.DismissReason.cancel) {
+            // Do nothing, just close the dialog
           }
         });
       } finally {
@@ -867,13 +1047,13 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
 
               {/* Success Message */}
               {showSuccess ? (
-                <div className="p-10 flex flex-col items-center justify-center">
+                <div className="p-6 md:p-10 flex flex-col items-center justify-center">
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="w-20 h-20 mb-6 rounded-full bg-green-100 flex items-center justify-center text-green-600"
+                    className="w-16 h-16 md:w-20 md:h-20 mb-6 rounded-full bg-green-100 flex items-center justify-center text-green-600"
                   >
-                    <CheckCircle size={50} />
+                    <CheckCircle size={40} />
                   </motion.div>
                   <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">
                     Pengajuan Berhasil Dikirim!
@@ -882,6 +1062,34 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
                     Kami akan menghubungi Anda secepatnya untuk konfirmasi
                     penyewaan. Pengajuan Anda telah masuk ke sistem dan menunggu
                     persetujuan admin.
+                  </p>
+
+                  <div className="flex flex-col md:flex-row gap-3 w-full max-w-md">
+                    <motion.button
+                      whileHover={{ scale: isMobile ? 1.0 : 1.05 }}
+                      whileTap={{ scale: isMobile ? 0.98 : 0.95 }}
+                      onClick={downloadPDF}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <FileText size={18} />
+                      <span>Unduh Formulir PDF</span>
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={{ scale: isMobile ? 1.0 : 1.05 }}
+                      whileTap={{ scale: isMobile ? 0.98 : 0.95 }}
+                      onClick={downloadPDFAndSendWhatsApp}
+                      className="px-4 py-2 bg-green-500 text-white rounded-lg font-medium shadow-md hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Send size={18} />
+                      <span>Kirim via WhatsApp</span>
+                    </motion.button>
+                  </div>
+
+                  <p className="text-xs text-gray-500 mt-4 text-center">
+                    Anda dapat mengunduh formulir PDF sebagai bukti pendaftaran
+                    dan mengirimkannya melalui WhatsApp untuk koordinasi lebih
+                    lanjut.
                   </p>
                 </div>
               ) : (
@@ -913,25 +1121,6 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
                         Seluruh informasi yang Anda berikan terenkripsi
                         end-to-end dan tidak akan dibagikan kepada pihak ketiga.
                         Kami menghargai privasi Anda.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mb-8 p-4 bg-yellow-50 rounded-lg border border-yellow-100 flex items-start gap-3">
-                    <AlertCircle
-                      size={24}
-                      className="text-yellow-600 flex-shrink-0 mt-0.5"
-                    />
-                    <div>
-                      <h3 className="font-medium text-yellow-800 mb-1">
-                        Informasi Penting
-                      </h3>
-                      <p className="text-sm text-yellow-700">
-                        Mohon pastikan data yang Anda isi sesuai dengan
-                        identitas asli. Gunakan nomor telepon dan alamat email
-                        yang sama seperti saat registrasi. Setelah pengajuan
-                        Anda diterima, kami akan menghubungi melalui WhatsApp
-                        untuk proses konfirmasi.
                       </p>
                     </div>
                   </div>
