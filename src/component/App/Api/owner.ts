@@ -13,7 +13,7 @@ export const owner: owner[] = [
     name: "Ibu Kost",
     email: "ibukost@gmail.com",
     phone: "08234567890",
-    address: "Jl. Merak No. 15, Semarang",
+    address: "Jl. Mugarsari, Kec. Tamansari, Kota Tasik. Tasikmalaya",
     image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2",
   },
   {
@@ -21,7 +21,7 @@ export const owner: owner[] = [
     name: "Putri",
     email: "putri@gmail.com",
     phone: "08345678901",
-    address: "Jl. Merak No. 15, Semarang",
+    address: "Jl. Mugarsari, Kec. Tamansari, Kota Tasik. Tasikmalaya",
     image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
   },
   {
@@ -29,7 +29,7 @@ export const owner: owner[] = [
     name: "Putra",
     email: "putra@gmail.com",
     phone: "08456789012",
-    address: "Jl. Merak No. 15, Semarang",
+    address: "Jl. Mugarsari, Kec. Tamansari, Kota Tasik. Tasikmalaya",
     image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
   },
 ];

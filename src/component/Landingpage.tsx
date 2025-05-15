@@ -1678,7 +1678,7 @@ const LandingPage: React.FC = () => {
                     size={18}
                     className="text-yellow-400 mt-1 flex-shrink-0"
                   />
-                  <span>Jl. Merak No. 15, Semarang, Indonesia</span>
+                  <span>Jl. Mugarsari, Kec. Tamansari, Kota Tasik. Tasikmalaya, Jawa Barat 46196</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Phone

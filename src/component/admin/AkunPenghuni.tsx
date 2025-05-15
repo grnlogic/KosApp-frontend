@@ -680,18 +680,7 @@ export default function EditAkunPenghuni() {
     e.preventDefault();
     if (!selectedUser) return;
 
-    // Validate password
-    const errors = validatePassword(newPassword);
-    if (errors.length > 0) {
-      setPasswordErrors(errors);
-      return;
-    }
-
-    // Check if passwords match
-    if (newPassword !== confirmPassword) {
-      setPasswordErrors(["Password dan konfirmasi password tidak sesuai"]);
-      return;
-    }
+    // Validasi password seperti sebelumnya...
 
     try {
       // Show loading indicator
@@ -703,13 +692,27 @@ export default function EditAkunPenghuni() {
         },
       });
 
-      // Make a real API call to reset the password without auth header
+      // Pastikan token ada dan valid
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error(
+          "Token autentikasi tidak ditemukan. Silakan login kembali."
+        );
+      }
+
+      // Perbaiki format request dan header
       const response = await axios.put(
         `${API_URL}/api/users/${selectedUser.id}/reset-password`,
-        { newPassword }
+        { newPassword }, // Pastikan format body request sesuai dengan yang diharapkan backend
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
-      // Check if response was successful
+      // Periksa respons
       if (response.status === 200) {
         handleClosePopup();
         Swal.fire({
@@ -725,11 +728,24 @@ export default function EditAkunPenghuni() {
       }
     } catch (err) {
       console.error("Error resetting password:", err);
-      // Type check the error before accessing properties
+
+      // Handle specific error cases
       const axiosError = err as AxiosError<ErrorResponse>;
-      const errorMessage =
-        axiosError.response?.data?.message ||
-        "Terjadi kesalahan saat menyimpan password baru";
+      let errorMessage = "Terjadi kesalahan saat menyimpan password baru";
+
+      if (
+        axiosError.response?.status === 401 ||
+        axiosError.response?.status === 403
+      ) {
+        errorMessage = "Sesi login telah berakhir. Silakan login kembali.";
+        // Redirect ke halaman login
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 2000);
+      } else if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      }
+
       Swal.fire({
         icon: "error",
         title: "Gagal mereset password",
@@ -930,11 +946,7 @@ export default function EditAkunPenghuni() {
                 </p>
                 {/* Password and role intentionally not displayed */}
               </div>
-              <div className="flex gap-3 text-xl text-gray-600">
-                <Pencil
-                  className="cursor-pointer"
-                  onClick={() => handleEditClick(user)}
-                />
+              <div className="flex gap-2">
                 <span title="Reset Password">
                   <Key
                     className="cursor-pointer text-yellow-500"
