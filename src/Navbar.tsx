@@ -77,7 +77,6 @@ const Navbar = ({
     setLanguageDropdownOpen(!languageDropdownOpen);
   };
 
-
   return (
     <nav className="fixed top-0 left-0 right-0 bg-yellow-500 text-white shadow-md px-4 py-3 z-50">
       <div className="flex justify-between items-center">
@@ -103,11 +102,8 @@ const Navbar = ({
               navigate("/");
             }}
           />
-
-       
-            
-          </div>
         </div>
+      </div>
     </nav>
   );
 };

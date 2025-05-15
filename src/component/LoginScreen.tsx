@@ -150,7 +150,30 @@ const LoginScreen = ({
 
   const [role, setRole] = useState(""); // Tambahkan state untuk role
 
+  // Add new state for input animations
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [inputErrors, setInputErrors] = useState<{ [key: string]: boolean }>(
+    {}
+  );
+  const [buttonHover, setButtonHover] = useState<string | null>(null);
+  const [formShake, setFormShake] = useState(false);
+
   const handleLogin = async () => {
+    // Add form shake animation on validation error
+    if (!username || !password) {
+      setFormShake(true);
+      setTimeout(() => setFormShake(false), 500);
+
+      // Highlight empty fields with error animation
+      setInputErrors({
+        username: !username,
+        password: !password,
+      });
+
+      setTimeout(() => setInputErrors({}), 2000);
+      return;
+    }
+
     setIsLoading(true);
     setError("");
 
@@ -237,10 +260,10 @@ const LoginScreen = ({
               timerProgressBar: true,
             }).then(() => {
               // Navigate to the appropriate room page based on roomId
-              if (data.roomId === "1") {
-                navigate("/Home"); // Kamar 1 uses /Home route
+              if (data.roomId) {
+                navigate(`/Home${data.roomId}`); // Gunakan ini untuk semua kamar
               } else {
-                navigate(`/Home${data.roomId}`); // Other rooms use /Home2, /Home3, etc.
+                navigate("/choose-room"); // Jika tidak ada roomId
               }
             });
           }
@@ -797,43 +820,71 @@ const LoginScreen = ({
         </div>
       )}
 
-      {/* Login Form with improved styling */}
+      {/* Login Form with improved styling and animations */}
       {showLoginForm && (
         <div
           className={`absolute bottom-0 sm:bottom-4 md:bottom-6 lg:bottom-10 text-center bg-white p-0 rounded-t-3xl sm:rounded-3xl shadow-2xl transition-all duration-1000 ${
             showFormLoginAnimated
               ? "opacity-100 translate-y-0"
               : "opacity-0 translate-y-20"
-          } w-full sm:w-[90%] md:w-[80%] max-w-sm sm:max-w-md md:max-w-lg mx-auto overflow-hidden`}
+          } w-full sm:w-[90%] md:w-[80%] max-w-sm sm:max-w-md md:max-w-lg mx-auto overflow-hidden ${
+            formShake ? "animate-shake" : ""
+          }`}
         >
           <div className="space-y-4">
             <div className="bg-white p-6 sm:p-7 md:p-8 lg:p-10 rounded-t-3xl sm:rounded-3xl">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 md:mb-8 text-gray-800">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 md:mb-8 text-gray-800 animate-fadeIn">
                 Login
               </h2>
               <div className="space-y-4 md:space-y-6">
-                <div className="relative">
+                <div className="relative overflow-hidden group">
                   <input
                     type="text"
                     placeholder="Username"
-                    className="w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 text-base sm:text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50"
+                    className={`w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 text-base sm:text-lg border-2 ${
+                      inputErrors.username
+                        ? "border-red-400 animate-pulse"
+                        : focusedInput === "username"
+                        ? "border-[#FEBF00] scale-105"
+                        : "border-orange-200"
+                    } rounded-xl focus:outline-none transition-all duration-300 bg-gray-50 group-hover:border-orange-300`}
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     onKeyPress={handleKeyPressLogin}
+                    onFocus={() => setFocusedInput("username")}
+                    onBlur={() => setFocusedInput(null)}
                   />
+                  <div
+                    className={`h-1 bg-[#FEBF00] absolute bottom-0 left-0 transition-all duration-500 ${
+                      focusedInput === "username" ? "w-full" : "w-0"
+                    }`}
+                  ></div>
                 </div>
-                <div className="relative">
+                <div className="relative overflow-hidden group">
                   <input
                     type={showPassword ? "text" : "password"}
                     placeholder="Password"
-                    className="w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 pr-12 text-base sm:text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50"
+                    className={`w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 pr-12 text-base sm:text-lg border-2 ${
+                      inputErrors.password
+                        ? "border-red-400 animate-pulse"
+                        : focusedInput === "password"
+                        ? "border-[#FEBF00] scale-105"
+                        : "border-orange-200"
+                    } rounded-xl focus:outline-none transition-all duration-300 bg-gray-50 group-hover:border-orange-300`}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onKeyPress={handleKeyPressLogin}
+                    onFocus={() => setFocusedInput("password")}
+                    onBlur={() => setFocusedInput(null)}
                   />
+                  <div
+                    className={`h-1 bg-[#FEBF00] absolute bottom-0 left-0 transition-all duration-500 ${
+                      focusedInput === "password" ? "w-full" : "w-0"
+                    }`}
+                  ></div>
                   <button
                     type="button"
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none hover:text-[#FEBF00] transition-colors duration-300"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={
                       showPassword
@@ -844,7 +895,7 @@ const LoginScreen = ({
                     {showPassword ? (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 sm:h-6 w-5 sm:w-6"
+                        className="h-5 sm:h-6 w-5 sm:w-6 transition-transform duration-300 hover:scale-110"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -859,7 +910,7 @@ const LoginScreen = ({
                     ) : (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 sm:h-6 w-5 sm:w-6"
+                        className="h-5 sm:h-6 w-5 sm:w-6 transition-transform duration-300 hover:scale-110"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -886,23 +937,59 @@ const LoginScreen = ({
                 className={`mt-6 sm:mt-7 md:mt-8 px-8 sm:px-10 md:px-12 py-3 sm:py-3.5 md:py-4 ${
                   isLoading
                     ? "bg-gray-400 cursor-not-allowed"
+                    : buttonHover === "login"
+                    ? "bg-gray-800 scale-105 shadow-xl"
                     : "bg-black hover:bg-gray-800"
                 } text-white rounded-xl w-full font-bold transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg`}
                 onClick={handleLogin}
                 disabled={isLoading}
+                onMouseEnter={() => setButtonHover("login")}
+                onMouseLeave={() => setButtonHover(null)}
               >
-                {isLoading ? "Memuat..." : "Masuk"}
+                {isLoading ? (
+                  <span className="flex items-center justify-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Memuat...
+                  </span>
+                ) : (
+                  "Masuk"
+                )}
               </button>
 
               <button
-                className="mt-3 sm:mt-4 px-8 sm:px-10 md:px-12 py-3 sm:py-3.5 md:py-4 bg-white text-black border-2 border-black rounded-xl w-full transition-all duration-300 hover:bg-gray-50 hover:scale-105 active:scale-95"
+                className={`mt-3 sm:mt-4 px-8 sm:px-10 md:px-12 py-3 sm:py-3.5 md:py-4 ${
+                  buttonHover === "register"
+                    ? "bg-gray-50 border-gray-800 scale-105 shadow-md"
+                    : "bg-white border-black"
+                } text-black border-2 rounded-xl w-full transition-all duration-300 hover:bg-gray-50 hover:scale-105 active:scale-95`}
                 onClick={handleShowRegister}
+                onMouseEnter={() => setButtonHover("register")}
+                onMouseLeave={() => setButtonHover(null)}
               >
                 Daftar
               </button>
 
               {error && (
-                <p className="text-center mt-4 text-red-600 bg-red-50 p-2 rounded-lg">
+                <p className="text-center mt-4 text-red-600 bg-red-50 p-2 rounded-lg animate-fadeInShake">
                   {error}
                 </p>
               )}
@@ -929,51 +1016,97 @@ const LoginScreen = ({
         </div>
       )}
 
-      {/* Register Form with improved styling */}
+      {/* Register Form with improved animations */}
       {showRegisterForm && (
         <div
           className={`absolute bottom-0 sm:bottom-4 md:bottom-6 lg:bottom-10 text-center bg-white p-0 rounded-t-3xl sm:rounded-3xl shadow-2xl transition-all duration-1000 ${
             showFormRegisterAnimated
               ? "opacity-100 translate-y-0"
               : "opacity-0 translate-y-20"
-          } w-full sm:w-[90%] md:w-[80%] max-w-sm sm:max-w-md md:max-w-lg mx-auto overflow-hidden`}
+          } w-full sm:w-[90%] md:w-[80%] max-w-sm sm:max-w-md md:max-w-lg mx-auto overflow-hidden ${
+            formShake ? "animate-shake" : ""
+          }`}
         >
+          {/* Apply the same animation pattern to register form inputs */}
           <div className="space-y-4">
             <div className="bg-white p-6 sm:p-7 md:p-8 lg:p-10 rounded-t-3xl sm:rounded-3xl">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 md:mb-8 text-gray-800">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 md:mb-8 text-gray-800 animate-fadeIn">
                 Daftar
               </h2>
               <div className="space-y-4 md:space-y-5">
-                <input
-                  type="text"
-                  placeholder="Nama Pengguna"
-                  className="w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 text-base sm:text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  onKeyPress={handleKeyPressRegister}
-                />
+                {/* Apply animation pattern to all register form inputs */}
+                <div className="relative overflow-hidden group">
+                  <input
+                    type="text"
+                    placeholder="Nama Pengguna"
+                    className={`w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 text-base sm:text-lg border-2 ${
+                      inputErrors.regUsername
+                        ? "border-red-400 animate-pulse"
+                        : focusedInput === "regUsername"
+                        ? "border-[#FEBF00] scale-105"
+                        : "border-orange-200"
+                    } rounded-xl focus:outline-none transition-all duration-300 bg-gray-50 group-hover:border-orange-300`}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    onKeyPress={handleKeyPressRegister}
+                    onFocus={() => setFocusedInput("regUsername")}
+                    onBlur={() => setFocusedInput(null)}
+                  />
+                  <div
+                    className={`h-1 bg-[#FEBF00] absolute bottom-0 left-0 transition-all duration-500 ${
+                      focusedInput === "regUsername" ? "w-full" : "w-0"
+                    }`}
+                  ></div>
+                </div>
 
+                {/* Apply similar animation patterns to other register form inputs */}
                 <input
                   type="email"
                   placeholder="Email"
-                  className="w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 text-base sm:text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50"
+                  className={`w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 text-base sm:text-lg border-2 ${
+                    inputErrors.regEmail
+                      ? "border-red-400 animate-pulse"
+                      : focusedInput === "regEmail"
+                      ? "border-[#FEBF00] scale-105"
+                      : "border-orange-200"
+                  } rounded-xl focus:outline-none transition-all duration-300 bg-gray-50 group-hover:border-orange-300`}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onKeyPress={handleKeyPressRegister}
+                  onFocus={() => setFocusedInput("regEmail")}
+                  onBlur={() => setFocusedInput(null)}
                 />
+                <div
+                  className={`h-1 bg-[#FEBF00] absolute bottom-0 left-0 transition-all duration-500 ${
+                    focusedInput === "regEmail" ? "w-full" : "w-0"
+                  }`}
+                ></div>
 
-                <div className="relative">
+                <div className="relative overflow-hidden group">
                   <input
                     type={showRegisterPassword ? "text" : "password"}
                     placeholder="Password"
-                    className="w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 pr-12 text-base sm:text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50"
+                    className={`w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 pr-12 text-base sm:text-lg border-2 ${
+                      inputErrors.regPassword
+                        ? "border-red-400 animate-pulse"
+                        : focusedInput === "regPassword"
+                        ? "border-[#FEBF00] scale-105"
+                        : "border-orange-200"
+                    } rounded-xl focus:outline-none transition-all duration-300 bg-gray-50 group-hover:border-orange-300`}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onKeyPress={handleKeyPressRegister}
+                    onFocus={() => setFocusedInput("regPassword")}
+                    onBlur={() => setFocusedInput(null)}
                   />
+                  <div
+                    className={`h-1 bg-[#FEBF00] absolute bottom-0 left-0 transition-all duration-500 ${
+                      focusedInput === "regPassword" ? "w-full" : "w-0"
+                    }`}
+                  ></div>
                   <button
                     type="button"
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none hover:text-[#FEBF00] transition-colors duration-300"
                     onClick={() =>
                       setShowRegisterPassword(!showRegisterPassword)
                     }
@@ -986,7 +1119,7 @@ const LoginScreen = ({
                     {showRegisterPassword ? (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 sm:h-6 w-5 sm:w-6"
+                        className="h-5 sm:h-6 w-5 sm:w-6 transition-transform duration-300 hover:scale-110"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -1001,7 +1134,7 @@ const LoginScreen = ({
                     ) : (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 sm:h-6 w-5 sm:w-6"
+                        className="h-5 sm:h-6 w-5 sm:w-6 transition-transform duration-300 hover:scale-110"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -1023,18 +1156,31 @@ const LoginScreen = ({
                   </button>
                 </div>
 
-                <div className="relative">
+                <div className="relative overflow-hidden group">
                   <input
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Konfirmasi Password"
-                    className="w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 pr-12 text-base sm:text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50"
+                    className={`w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 pr-12 text-base sm:text-lg border-2 ${
+                      inputErrors.regConfirmPassword
+                        ? "border-red-400 animate-pulse"
+                        : focusedInput === "regConfirmPassword"
+                        ? "border-[#FEBF00] scale-105"
+                        : "border-orange-200"
+                    } rounded-xl focus:outline-none transition-all duration-300 bg-gray-50 group-hover:border-orange-300`}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     onKeyPress={handleKeyPressRegister}
+                    onFocus={() => setFocusedInput("regConfirmPassword")}
+                    onBlur={() => setFocusedInput(null)}
                   />
+                  <div
+                    className={`h-1 bg-[#FEBF00] absolute bottom-0 left-0 transition-all duration-500 ${
+                      focusedInput === "regConfirmPassword" ? "w-full" : "w-0"
+                    }`}
+                  ></div>
                   <button
                     type="button"
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 focus:outline-none hover:text-[#FEBF00] transition-colors duration-300"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     aria-label={
                       showConfirmPassword
@@ -1045,7 +1191,7 @@ const LoginScreen = ({
                     {showConfirmPassword ? (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 sm:h-6 w-5 sm:w-6"
+                        className="h-5 sm:h-6 w-5 sm:w-6 transition-transform duration-300 hover:scale-110"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -1060,7 +1206,7 @@ const LoginScreen = ({
                     ) : (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 sm:h-6 w-5 sm:w-6"
+                        className="h-5 sm:h-6 w-5 sm:w-6 transition-transform duration-300 hover:scale-110"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -1082,26 +1228,53 @@ const LoginScreen = ({
                   </button>
                 </div>
 
-                <input
-                  type="tel"
-                  placeholder="Nomor Telepon"
-                  className="w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 text-base sm:text-lg border-2 border-orange-200 rounded-xl focus:border-[#FEBF00] focus:outline-none transition-all duration-300 bg-gray-50"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  onKeyPress={handleKeyPressRegister}
-                />
+                <div className="relative overflow-hidden group">
+                  <input
+                    type="tel"
+                    placeholder="Nomor Telepon"
+                    className={`w-full p-3 sm:p-3.5 md:p-4 pl-4 sm:pl-5 text-base sm:text-lg border-2 ${
+                      inputErrors.regPhoneNumber
+                        ? "border-red-400 animate-pulse"
+                        : focusedInput === "regPhoneNumber"
+                        ? "border-[#FEBF00] scale-105"
+                        : "border-orange-200"
+                    } rounded-xl focus:outline-none transition-all duration-300 bg-gray-50 group-hover:border-orange-300`}
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    onKeyPress={handleKeyPressRegister}
+                    onFocus={() => setFocusedInput("regPhoneNumber")}
+                    onBlur={() => setFocusedInput(null)}
+                  />
+                  <div
+                    className={`h-1 bg-[#FEBF00] absolute bottom-0 left-0 transition-all duration-500 ${
+                      focusedInput === "regPhoneNumber" ? "w-full" : "w-0"
+                    }`}
+                  ></div>
+                </div>
               </div>
 
               <button
-                className="mt-6 sm:mt-7 md:mt-8 px-8 sm:px-10 md:px-12 py-3 sm:py-3.5 md:py-4 bg-black text-white rounded-xl w-full font-bold transition-all duration-300 hover:bg-gray-800 hover:scale-105 active:scale-95 shadow-lg"
+                className={`mt-6 sm:mt-7 md:mt-8 px-8 sm:px-10 md:px-12 py-3 sm:py-3.5 md:py-4 ${
+                  buttonHover === "registerSubmit"
+                    ? "bg-gray-800 scale-105 shadow-xl"
+                    : "bg-black hover:bg-gray-800"
+                } text-white rounded-xl w-full font-bold transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg`}
                 onClick={handleRegister}
+                onMouseEnter={() => setButtonHover("registerSubmit")}
+                onMouseLeave={() => setButtonHover(null)}
               >
                 Daftar
               </button>
 
               <button
-                className="mt-3 sm:mt-4 px-8 sm:px-10 md:px-12 py-3 sm:py-3.5 md:py-4 bg-white text-black border-2 border-black rounded-xl w-full transition-all duration-300 hover:bg-gray-50 hover:scale-105 active:scale-95"
+                className={`mt-3 sm:mt-4 px-8 sm:px-10 md:px-12 py-3 sm:py-3.5 md:py-4 ${
+                  buttonHover === "backToLogin"
+                    ? "bg-gray-50 border-gray-800 scale-105 shadow-md"
+                    : "bg-white border-black"
+                } text-black border-2 rounded-xl w-full transition-all duration-300 hover:bg-gray-50 hover:scale-105 active:scale-95`}
                 onClick={handleBackToLogin}
+                onMouseEnter={() => setButtonHover("backToLogin")}
+                onMouseLeave={() => setButtonHover(null)}
               >
                 Kembali
               </button>
@@ -1110,14 +1283,16 @@ const LoginScreen = ({
         </div>
       )}
 
-      {/* OTP Form with improved styling */}
+      {/* OTP Form with improved animations */}
       {showOtpForm && (
         <div
           className={`absolute bottom-0 sm:bottom-4 md:bottom-6 lg:bottom-10 text-center bg-white p-0 rounded-t-3xl sm:rounded-3xl shadow-2xl transition-all duration-1000 ${
             showOtpFormAnimated
               ? "opacity-100 translate-y-0"
               : "opacity-0 translate-y-20"
-          } w-full sm:w-[90%] md:w-[80%] max-w-sm sm:max-w-md md:max-w-lg mx-auto overflow-hidden`}
+          } w-full sm:w-[90%] md:w-[80%] max-w-sm sm:max-w-md md:max-w-lg mx-auto overflow-hidden ${
+            formShake ? "animate-shake" : ""
+          }`}
         >
           <div className="space-y-4">
             <div className="bg-white p-6 sm:p-7 md:p-8 lg:p-10 rounded-t-3xl sm:rounded-3xl">

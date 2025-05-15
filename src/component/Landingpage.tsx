@@ -75,31 +75,31 @@ const fallbackRooms = [
     id: "fallback-1",
     nomorKamar: "101",
     status: "kosong",
-    hargaBulanan: 850000,
+    hargaBulanan: 500000,
     fasilitas: "AC, WiFi, Kamar Mandi Dalam, Lemari, Meja, Kursi",
     title: "Kamar 101",
     description: "Kamar nyaman dengan fasilitas lengkap",
-    price: 850000,
+    price: 500000,
   },
   {
     id: "fallback-2",
     nomorKamar: "102",
     status: "kosong",
-    hargaBulanan: 950000,
+    hargaBulanan: 500000,
     fasilitas: "AC, WiFi, Kamar Mandi Dalam, Lemari, Meja, Kursi, TV",
     title: "Kamar 102",
     description: "Kamar premium dengan TV",
-    price: 950000,
+    price: 500000,
   },
   {
     id: "fallback-3",
     nomorKamar: "103",
     status: "terisi",
-    hargaBulanan: 800000,
+    hargaBulanan: 500000,
     fasilitas: "WiFi, Kamar Mandi Dalam, Lemari, Meja",
     title: "Kamar 103",
     description: "Kamar standar yang nyaman",
-    price: 800000,
+    price: 500000,
   },
 ];
 
@@ -148,24 +148,38 @@ const getLocalUserId = (): number | null => {
   return null;
 };
 
-// Tambahkan fungsi helper untuk mengelola scroll
+// Perbaiki fungsi helper untuk mengelola scroll
 const scrollHelper = {
   disable: () => {
     document.body.classList.add("overflow-hidden");
+    // Simpan nilai overflow asli untuk dipulihkan nanti
+    document.body.dataset.originalOverflow = document.body.style.overflow || "";
+    document.body.style.overflow = "hidden";
   },
   enable: () => {
     document.body.classList.remove("overflow-hidden");
-    // Reset jika ada style inline yang ditambahkan oleh SweetAlert
-    document.body.style.overflow = "";
+    // Pulihkan nilai overflow asli
+    document.body.style.overflow = document.body.dataset.originalOverflow || "";
     document.body.style.paddingRight = "";
+    // Hapus data yang disimpan
+    delete document.body.dataset.originalOverflow;
   },
   reset: () => {
-    // Fungsi ini memastikan scroll selalu dikembalikan
+    // Fungsi ini memastikan scroll selalu dikembalikan dengan lebih agresif
     setTimeout(() => {
       document.body.classList.remove("overflow-hidden");
       document.body.style.overflow = "";
       document.body.style.paddingRight = "";
+      delete document.body.dataset.originalOverflow;
     }, 100);
+  },
+  forceReset: () => {
+    // Fungsi baru untuk reset paksa jika terjadi masalah
+    document.body.classList.remove("overflow-hidden");
+    document.body.style.overflow = "";
+    document.body.style.paddingRight = "";
+    document.documentElement.style.overflow = "";
+    delete document.body.dataset.originalOverflow;
   },
 };
 
@@ -245,7 +259,10 @@ const saveRoomRegistrationRequest = async (
         </div>
         <div class="mt-3 p-3 bg-yellow-50 rounded">
           <p class="font-semibold">Harga per bulan: Rp ${hargaBulanan.toLocaleString()}</p>
-          <p id="totalPayment" class="font-bold text-lg">Total: Rp ${hargaBulanan.toLocaleString()}</p>
+          <p class="text-sm text-gray-600">Biaya administrasi: Rp 20.000</p>
+          <p id="totalPayment" class="font-bold text-lg">Total: Rp ${(
+            hargaBulanan + 20000
+          ).toLocaleString()}</p>
         </div>
       </div>
     `,
@@ -264,7 +281,7 @@ const saveRoomRegistrationRequest = async (
       ) as HTMLSelectElement;
       const updateTotal = () => {
         const duration = parseInt(durationSelect.value);
-        const total = hargaBulanan * duration;
+        const total = hargaBulanan * duration + 20000; // Tambah biaya administrasi
         const totalElement = document.getElementById("totalPayment");
         if (totalElement) {
           totalElement.textContent = `Total: Rp ${total.toLocaleString()}`;
@@ -305,7 +322,7 @@ const saveRoomRegistrationRequest = async (
         duration,
         startDate,
         paymentMethod,
-        totalPayment: hargaBulanan * duration,
+        totalPayment: hargaBulanan * duration + 20000, // Tambah biaya administrasi
       };
     },
   }).then(async (result) => {
@@ -338,7 +355,7 @@ const saveRoomRegistrationRequest = async (
         durasiSewa: result.value.duration,
         tanggalMulai: result.value.startDate,
         metodePembayaran: result.value.paymentMethod,
-        totalPembayaran: result.value.totalPayment,
+        totalPembayaran: result.value.duration * hargaBulanan + 20000, // Tambah biaya administrasi
         timestamp: Date.now(),
         status: "pending",
       };
@@ -640,8 +657,9 @@ const CardList = () => {
   // Add function to handle closing with nav restoration
   const handleCloseModal = () => {
     setSelectedCard(null);
-    // Gunakan fungsi helper
+    // Gunakan fungsi helper yang sudah diperbaiki dan tambahkan forceReset
     scrollHelper.enable();
+    scrollHelper.reset(); // Tambahkan reset untuk memastikan
   };
 
   // Better loading state with skeleton cards - now more visible
@@ -836,7 +854,13 @@ const CardList = () => {
             ...selectedCard,
             image: roomImage,
           }}
-          onClose={handleCloseModal} // Use the new close handler
+          onClose={() => {
+            handleCloseModal();
+            // Tambahkan timer untuk memastikan scroll dipulihkan
+            setTimeout(() => {
+              scrollHelper.forceReset();
+            }, 300);
+          }}
         />
       )}
     </div>
@@ -1565,7 +1589,12 @@ const LandingPage: React.FC = () => {
       </article>
 
       {/* Coming Soon Modal */}
-      <AnimatePresence>
+      <AnimatePresence
+        onExitComplete={() => {
+          // Pastikan scroll dipulihkan setelah animasi keluar selesai
+          scrollHelper.forceReset();
+        }}
+      >
         {showComingSoon && (
           <motion.div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center overflow-hidden"
@@ -1589,7 +1618,7 @@ const LandingPage: React.FC = () => {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Decorative elements */}
+              {/* Decorative elements dan existing code lainnya tetap sama */}
               <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-yellow-300 opacity-30"></div>
               <div className="absolute -left-16 -bottom-16 w-64 h-64 rounded-full bg-yellow-300 opacity-30"></div>
 
@@ -1678,7 +1707,10 @@ const LandingPage: React.FC = () => {
                     size={18}
                     className="text-yellow-400 mt-1 flex-shrink-0"
                   />
-                  <span>Jl. Mugarsari, Kec. Tamansari, Kota Tasik. Tasikmalaya, Jawa Barat 46196</span>
+                  <span>
+                    Jl. Mugarsari, Kec. Tamansari, Kota Tasik. Tasikmalaya, Jawa
+                    Barat 46196
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Phone

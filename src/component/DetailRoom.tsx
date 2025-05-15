@@ -57,7 +57,7 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
     email: "",
     idNumber: "",
     moveInDate: "",
-    duration: "2", // Default is still 3 months
+    duration: "1", // Default is 1 month
     additionalNotes: "",
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -324,12 +324,12 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
       );
       y += 10;
 
-      // Deposit
+      // Biaya Administrasi (menggantikan Deposit)
       doc.rect(margin, y, 170, 10, "S");
-      doc.text("Deposit", margin + 5, y + 7);
-      doc.text(`Rp ${formatPrice(card.hargaBulanan)}`, margin + 80, y + 7);
+      doc.text("Biaya Administrasi", margin + 5, y + 7);
+      doc.text(`Rp 20.000`, margin + 80, y + 7);
       doc.text("1", margin + 110, y + 7);
-      doc.text(`Rp ${formatPrice(card.hargaBulanan)}`, margin + 150, y + 7);
+      doc.text(`Rp 20.000`, margin + 150, y + 7);
       y += 15;
 
       // Total
@@ -740,14 +740,12 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
               </h2>
               <div className="space-y-2">
                 <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                  <span className="text-gray-600">Deposit</span>
-                  <span className="font-medium text-gray-800">
-                    Rp {formatPrice(card.hargaBulanan)}
-                  </span>
+                  <span className="text-gray-600">Biaya Administrasi</span>
+                  <span className="font-medium text-gray-800">Rp 20.000</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-gray-200 pb-2">
                   <span className="text-gray-600">Minimal Sewa</span>
-                  <span className="font-medium text-gray-800">3 Bulan</span>
+                  <span className="font-medium text-gray-800">1 Bulan</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-gray-200 pb-2">
                   <span className="text-gray-600">Tanggal Tersedia</span>
@@ -1150,19 +1148,17 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">
-                          Deposit (1x biaya bulanan)
+                          Biaya Administrasi
                         </span>
-                        <span className="font-medium">
-                          Rp {formatPrice(card.hargaBulanan)}
-                        </span>
+                        <span className="font-medium">Rp 20.000</span>
                       </div>
                       <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between font-bold">
                         <span>Total Pembayaran Awal</span>
                         <span className="text-yellow-600">
                           Rp{" "}
                           {formatPrice(
-                            card.hargaBulanan *
-                              (parseInt(formData.duration) + 1)
+                            card.hargaBulanan * parseInt(formData.duration) +
+                              20000
                           )}
                         </span>
                       </div>
