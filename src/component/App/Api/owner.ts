@@ -1,4 +1,4 @@
-export type owner = {
+export type Owner = {
   id: string;
   name: string;
   email: string;
@@ -7,7 +7,7 @@ export type owner = {
   image: string;
 };
 
-export const owner: owner[] = [
+export const owner: Owner[] = [
   {
     id: "2",
     name: "Ibu Kost",

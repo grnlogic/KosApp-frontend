@@ -1,32 +1,7 @@
-import axios from "axios";
+import axiosInstance from "../data/axiosConfig";
 import WaktuPelaksanaan from "../model/WaktuPelaksanaan";
 
-const API_URL = "https://manage-kost-production.up.railway.app/api/kebersihan";
-
-// Configure Axios with defaults
-const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  },
-});
-
-// Add request interceptor for debugging
-api.interceptors.request.use((request) => {
-  return request;
-});
-
-// Add response interceptor for debugging
-api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    console.error("Response Error:", error);
-    return Promise.reject(error);
-  }
-);
+const KEBERSIHAN_PATH = "/api/kebersihan";
 
 export interface Kebersihan {
   id?: number;
@@ -46,7 +21,7 @@ export { WaktuPelaksanaan };
 
 export const getAllKebersihan = async (): Promise<Kebersihan[]> => {
   try {
-    const response = await api.get("");
+    const response = await axiosInstance.get(KEBERSIHAN_PATH);
     return response.data;
   } catch (error) {
     console.error("Error fetching cleaning schedules:", error);
@@ -58,7 +33,7 @@ export const getKebersihanByRoom = async (
   roomNumber: string
 ): Promise<Kebersihan[]> => {
   try {
-    const response = await api.get("");
+    const response = await axiosInstance.get(KEBERSIHAN_PATH);
     // Filter the schedules for the specific room
     return response.data.filter(
       (item: Kebersihan) =>
@@ -75,7 +50,7 @@ export const getKebersihanByRoom = async (
 
 export const getKebersihanById = async (id: number): Promise<Kebersihan> => {
   try {
-    const response = await api.get(`/${id}`);
+    const response = await axiosInstance.get(`${KEBERSIHAN_PATH}/${id}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching cleaning schedule with id ${id}:`, error);
@@ -90,7 +65,7 @@ export const createKebersihan = async (
     // Remove any properties that should be managed by the server
     const { createdAt, updatedAt, ...cleanData } = data as any;
 
-    const response = await api.post("", cleanData);
+    const response = await axiosInstance.post(KEBERSIHAN_PATH, cleanData);
     return response.data;
   } catch (error) {
     console.error("Error creating cleaning schedule:", error);
@@ -108,7 +83,7 @@ export const updateKebersihan = async (
 
   
     
-    const response = await api.put(`/${id}`, cleanData);
+    const response = await axiosInstance.put(`${KEBERSIHAN_PATH}/${id}`, cleanData);
     return response.data;
   } catch (error) {
     console.error(`Error updating cleaning schedule with id ${id}:`, error);
@@ -118,7 +93,7 @@ export const updateKebersihan = async (
 
 export const deleteKebersihan = async (id: number): Promise<void> => {
   try {
-    await api.delete(`/${id}`);
+    await axiosInstance.delete(`${KEBERSIHAN_PATH}/${id}`);
   } catch (error) {
     console.error(`Error deleting cleaning schedule with id ${id}:`, error);
     throw error;

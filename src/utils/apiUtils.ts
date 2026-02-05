@@ -1,7 +1,5 @@
 import axios from "axios";
 
-const API_BASE_URL = "https://manage-kost-production.up.railway.app/api";
-
 /**
  * Gets the authentication token from cookies or localStorage
  */
@@ -57,7 +55,6 @@ export const getUserIdFromCookieOrStorage = (): number | null => {
       );
 
       const payload = JSON.parse(jsonPayload);
-      console.log("JWT payload:", payload);
 
       // Biasanya userId ada di payload sebagai "sub", "userId", "id" atau format lainnya
       if (payload.sub) return payload.sub;
@@ -125,7 +122,7 @@ export const hasAdminPermission = (): boolean => {
  * Create an authenticated API client
  */
 export const authApi = axios.create({
-  baseURL: "https://manage-kost-production.up.railway.app/api",
+  baseURL: process.env.REACT_APP_API_URL || "http://141.11.25.167:8080/api",
   timeout: 10000,
   withCredentials: true, // Penting untuk mengirim cookies
 });
@@ -133,7 +130,6 @@ export const authApi = axios.create({
 // Tambahkan interceptor untuk debugging
 authApi.interceptors.request.use(
   (config) => {
-    console.log("Request config:", config);
     return config;
   },
   (error) => {

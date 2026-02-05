@@ -106,10 +106,12 @@ const fallbackRooms = [
 // Add this function before saveRoomRegistrationRequest
 const checkApiConnection = async (): Promise<boolean> => {
   try {
-    const response = await axios.get(
-      "https://manage-kost-production.up.railway.app/api/debug/ping",
-      { timeout: 5000 }
-    );
+    const apiUrl =
+      process.env.REACT_APP_API_URL || "http://141.11.25.167:8080/api";
+    const response = await axios.get(`${apiUrl}/kamar`, {
+      timeout: 5000,
+      params: { limit: 1 }, // Only check if endpoint is reachable
+    });
     return response.status === 200;
   } catch (error) {
     console.warn("API connection check failed:", error);
@@ -431,7 +433,6 @@ const saveRoomRegistrationRequest = async (
           }
         )
         .then((response) => {
-          console.log("Room request response:", response.data);
           // Always close the loading indicator
           Swal.close();
           scrollHelper.reset();
@@ -545,14 +546,17 @@ const CardList = () => {
 
   // Improved mobile detection with additional handler for network conditions
   useEffect(() => {
+    let isMounted = true; // Track if component is still mounted
+
     const checkMobile = () => {
       const isMobileDevice =
         window.innerWidth < 768 ||
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
           navigator.userAgent
         );
-      setIsMobile(isMobileDevice);
-
+      if (isMounted) {
+        setIsMobile(isMobileDevice);
+      }
       return isMobileDevice;
     };
 
@@ -561,6 +565,8 @@ const CardList = () => {
 
     // More robust API fetching with better error handling for mobile
     const fetchRooms = async () => {
+      if (!isMounted) return;
+
       setIsLoading(true);
       setError(null);
 
@@ -571,7 +577,9 @@ const CardList = () => {
         // Create a timeout promise
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => {
-            setApiTimeoutReached(true);
+            if (isMounted) {
+              setApiTimeoutReached(true);
+            }
             reject(new Error("Waktu habis saat memuat data kamar"));
           }, timeoutDuration);
         });
@@ -579,17 +587,30 @@ const CardList = () => {
         // Define the actual fetch function
         const fetchData = async () => {
           try {
-            const response = await axios.get(
-              "https://manage-kost-production.up.railway.app/api/kamar"
-            );
+            const apiUrl =
+              process.env.REACT_APP_API_URL || "http://141.11.25.167:8080/api";
+            const response = await axios.get(`${apiUrl}/kamar`, {
+              timeout: timeoutDuration - 1000, // Slightly less than race timeout
+            });
 
             if (response.data && Array.isArray(response.data)) {
               return response.data;
-            } else {
-              throw new Error("Format data tidak valid");
+            } else if (response.data && typeof response.data === "object") {
+              // Handle case where data might be wrapped in an object
+              const dataArray =
+                response.data.data ||
+                response.data.rooms ||
+                response.data.kamar;
+              if (Array.isArray(dataArray)) {
+                return dataArray;
+              }
             }
+            throw new Error("Format data tidak valid");
           } catch (err) {
             console.error("API Error:", err);
+            if (axios.isAxiosError(err) && err.code === "ECONNABORTED") {
+              throw new Error("Koneksi timeout");
+            }
             throw new Error("Gagal memuat data dari server");
           }
         };
@@ -598,48 +619,75 @@ const CardList = () => {
         const data = await Promise.race([fetchData(), timeoutPromise]);
 
         // Process received data
-        const processedCards = data.map((item: any) => ({
-          id:
-            item.id ||
-            `kamar-${
-              item.nomorKamar || Math.random().toString(36).substring(7)
-            }`,
-          nomorKamar: item.nomorKamar || "???",
-          status: item.status || "kosong",
-          hargaBulanan: item.hargaBulanan || 0,
-          fasilitas: (item.fasilitas || "").substring(0, 100),
-          title: item.title || `Kamar ${item.nomorKamar || ""}`,
-          description: item.description || item.fasilitas || "",
-          price: item.price || item.hargaBulanan || 0,
-        }));
+        const processedCards = data.map((item: any) => {
+          const roomNumber = item.nomorKamar || item.roomNumber || "???";
+          const price =
+            item.hargaBulanan || item.price || item.monthlyPrice || 0;
 
-        setCards(processedCards);
-        setUsingFallbackData(false);
-        setIsLoading(false);
+          return {
+            id:
+              item.id ||
+              `kamar-${roomNumber}-${Math.random().toString(36).substring(7)}`,
+            nomorKamar: String(roomNumber),
+            status: (item.status || "kosong").toLowerCase(),
+            hargaBulanan: Number(price),
+            fasilitas: String(
+              item.fasilitas || item.facilities || ""
+            ).substring(0, 100),
+            title: item.title || `Kamar ${roomNumber}`,
+            description:
+              item.description ||
+              item.fasilitas ||
+              item.facilities ||
+              "Kamar nyaman",
+            price: Number(price),
+          };
+        });
+
+        if (isMounted) {
+          setCards(processedCards);
+          setUsingFallbackData(false);
+          setIsLoading(false);
+          setApiTimeoutReached(false);
+        }
       } catch (err) {
         console.error("Error loading rooms:", err);
 
-        // On error, use fallback data to ensure content always appears
-        setCards(fallbackRooms);
-        setUsingFallbackData(true);
-        setIsLoading(false);
+        if (isMounted) {
+          // On error, use fallback data to ensure content always appears
+          setCards(fallbackRooms);
+          setUsingFallbackData(true);
+          setIsLoading(false);
 
-        if (apiTimeoutReached) {
-          setError("Koneksi lambat terdeteksi. Menampilkan contoh kamar.");
-        } else {
-          setError("Gagal memuat data kamar. Menampilkan contoh kamar.");
+          const errorMessage =
+            err instanceof Error ? err.message : "Error tidak diketahui";
+
+          if (apiTimeoutReached || errorMessage.includes("timeout")) {
+            setError("Koneksi lambat terdeteksi. Menampilkan contoh kamar.");
+          } else {
+            setError("Gagal memuat data kamar. Menampilkan contoh kamar.");
+          }
         }
       }
     };
 
     // Add a small delay before fetching on mobile to let the UI render first
     if (isMobileDevice) {
-      setTimeout(fetchRooms, 300);
+      const mobileTimer = setTimeout(() => {
+        if (isMounted) fetchRooms();
+      }, 300);
+      return () => {
+        isMounted = false;
+        window.removeEventListener("resize", checkMobile);
+        clearTimeout(mobileTimer);
+      };
     } else {
       fetchRooms();
+      return () => {
+        isMounted = false;
+        window.removeEventListener("resize", checkMobile);
+      };
     }
-
-    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Load more cards function
@@ -868,74 +916,93 @@ const CardList = () => {
 };
 
 // Extract the card rendering to a separate component for better performance
-const RoomCard = ({
-  item,
-  index,
-  isMobile,
-  onSelect,
-}: {
-  item: Card;
-  index: number;
-  isMobile: boolean;
-  onSelect: () => void;
-}) => {
-  return (
-    <motion.div
-      key={item.id}
-      className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl hover:scale-105 border border-yellow-100"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3, delay: isMobile ? 0 : index * 0.05 }}
-    >
-      <div className="relative">
-        <div className="w-full h-56 bg-gray-100 relative">
-          <img
-            src={roomImage}
-            alt={`Kamar ${item.nomorKamar}`}
-            className={`w-full h-full object-cover transition-all ${
-              item.status !== "kosong" ? "blur-[4px]" : ""
-            }`}
-            loading="lazy"
-          />
-        </div>
-        <div className="absolute top-3 right-3">
-          <span
-            className={`text-xs font-bold px-3 py-1 rounded-full ${
-              item.status === "kosong"
-                ? "bg-green-500 text-white"
-                : "bg-red-500 text-white"
-            }`}
-          >
-            {item.status === "kosong" ? "Tersedia" : "Tidak Tersedia"}
-          </span>
-        </div>
-      </div>
-      <div className="p-5">
-        <h1 className="text-xl font-bold text-gray-800 mb-1">
-          Kamar {item.nomorKamar}
-        </h1>
-        <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-          {item.fasilitas}
-        </p>
-        <div className="flex justify-between items-center mt-4">
-          <p className="text-xl font-bold text-yellow-600">
-            Rp {item.hargaBulanan.toLocaleString("id-ID")}
-            <span className="text-xs text-gray-500 font-normal">/bulan</span>
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={onSelect}
-              className="flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-yellow-700 bg-yellow-100 hover:bg-yellow-600 hover:text-white transition duration-300"
+const RoomCard = React.memo(
+  ({
+    item,
+    index,
+    isMobile,
+    onSelect,
+  }: {
+    item: Card;
+    index: number;
+    isMobile: boolean;
+    onSelect: () => void;
+  }) => {
+    // Validate and sanitize data
+    const roomNumber = item.nomorKamar || "N/A";
+    const price = Number(item.hargaBulanan) || 0;
+    const status = (item.status || "kosong").toLowerCase();
+    const isAvailable = status === "kosong" || status === "available";
+    const facilities =
+      item.fasilitas || item.description || "Fasilitas lengkap";
+
+    return (
+      <motion.div
+        key={item.id}
+        className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl hover:scale-105 border border-yellow-100 cursor-pointer"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{
+          duration: 0.3,
+          delay: isMobile ? 0 : Math.min(index * 0.05, 0.3),
+        }}
+      >
+        <div className="relative">
+          <div className="w-full h-56 bg-gray-100 relative overflow-hidden">
+            <img
+              src={roomImage}
+              alt={`Kamar ${roomNumber}`}
+              className={`w-full h-full object-cover transition-all ${
+                !isAvailable ? "blur-[4px]" : ""
+              }`}
+              loading="lazy"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
+              }}
+            />
+          </div>
+          <div className="absolute top-3 right-3">
+            <span
+              className={`text-xs font-bold px-3 py-1 rounded-full shadow-md ${
+                isAvailable
+                  ? "bg-green-500 text-white"
+                  : "bg-red-500 text-white"
+              }`}
             >
-              Detail <ArrowRight size={16} />
-            </button>
-            {/* Hapus tombol "Daftar & Sewa" karena fungsionalitasnya akan digabung ke dalam form di DetailRoom */}
+              {isAvailable ? "Tersedia" : "Tidak Tersedia"}
+            </span>
           </div>
         </div>
-      </div>
-    </motion.div>
-  );
-};
+        <div className="p-5">
+          <h1 className="text-xl font-bold text-gray-800 mb-1">
+            Kamar {roomNumber}
+          </h1>
+          <p className="text-sm text-gray-500 mb-3 line-clamp-2">
+            {facilities}
+          </p>
+          <div className="flex justify-between items-center mt-4">
+            <p className="text-xl font-bold text-yellow-600">
+              Rp {price.toLocaleString("id-ID")}
+              <span className="text-xs text-gray-500 font-normal">/bulan</span>
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={onSelect}
+                className="flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-yellow-700 bg-yellow-100 hover:bg-yellow-600 hover:text-white transition duration-300"
+                aria-label={`Lihat detail kamar ${roomNumber}`}
+              >
+                Detail <ArrowRight size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+);
+
+RoomCard.displayName = "RoomCard";
 
 //fitur
 const Fitur = () => {

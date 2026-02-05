@@ -41,6 +41,7 @@ interface ErrorResponse {
 // Add this interface right after the User interface
 interface PendingRegistrationRequest {
   id: string;
+  userId?: number; // Optional: for existing users requesting rooms
   username: string;
   email: string;
   phoneNumber?: string;
@@ -56,7 +57,7 @@ interface PendingRegistrationRequest {
 }
 
 // URL API dasar
-const API_URL = "https://manage-kost-production.up.railway.app";
+const API_URL = "http://141.11.25.167:8080";
 
 export default function EditAkunPenghuni() {
   const [users, setUsers] = useState<User[]>([]);
@@ -79,36 +80,6 @@ export default function EditAkunPenghuni() {
   // Modify the fetchPendingRegistrations function to read from localStorage
   const fetchPendingRegistrations = async () => {
     try {
-      console.log("Fetching pending registrations...");
-
-      // First try to get any existing API pending registrations
-      let apiRequests: User[] = [];
-      try {
-        const response = await axios.get(
-          `${API_URL}/api/room-requests/pending`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-
-        if (response.status === 200 && Array.isArray(response.data)) {
-          console.log("API pending requests:", response.data);
-          apiRequests = response.data;
-        }
-      } catch (apiError) {
-        console.warn("Error fetching API pending registrations:", apiError);
-        // Continue execution to at least show localStorage requests
-      }
-
-      // Then get locally stored pending requests
-      const localPendingRequests: PendingRegistrationRequest[] = JSON.parse(
-        localStorage.getItem("pendingRoomRequests") || "[]"
-      );
-      console.log("Local pending requests:", localPendingRequests);
-
-      // Convert local requests to User format for consistency
       // Perbaikan untuk menghandle nilai id yang bisa undefined atau bukan string
       const safeIdConversion = (id: any) => {
         // Jika id adalah string dan mengandung "req-", lakukan replace
@@ -128,50 +99,132 @@ export default function EditAkunPenghuni() {
         }
       };
 
-      const localRequestsAsUsers: User[] = localPendingRequests.map((req) => ({
-        id: safeIdConversion(req.id),
-        username: req.username,
-        email: req.email,
-        phoneNumber: req.phoneNumber || "",
-        roomId: null,
-        role: "PENDING_USER",
-        pendingRegistration: true,
-        requestedRoomId: req.requestedRoomId,
-        // Copy additional rental properties
-        roomNumber: req.roomNumber,
-        durasiSewa: req.durasiSewa,
-        tanggalMulai: req.tanggalMulai,
-        metodePembayaran: req.metodePembayaran,
-        totalPembayaran: req.totalPembayaran,
-      }));
+      // First try to get any existing API pending registrations
+      let apiRequests: User[] = [];
+      try {
+        const response = await axios.get(
+          `${API_URL}/api/room-requests/pending`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
 
-      // Combine API results with local storage results (avoiding duplicates)
-      let combinedRequests = [...apiRequests];
-
-      // Only add local requests that aren't already in the API requests
-      for (const localReq of localRequestsAsUsers) {
-        if (
-          !apiRequests.some(
-            (apiReq) =>
-              apiReq.email === localReq.email &&
-              apiReq.requestedRoomId === localReq.requestedRoomId
-          )
-        ) {
-          combinedRequests.push(localReq);
+        if (response.status === 200 && Array.isArray(response.data)) {
+          apiRequests = response.data;
         }
+      } catch (apiError) {
+        console.warn("Error fetching API pending registrations:", apiError);
+        // Continue execution to at least show localStorage requests
       }
 
-      console.log("Combined pending requests:", combinedRequests);
-      setPendingRequests(combinedRequests);
-      setNotificationCount(combinedRequests.length);
+      // Get locally stored pending requests
+      const localPendingRequests: PendingRegistrationRequest[] = JSON.parse(
+        localStorage.getItem("pendingRoomRequests") || "[]"
+      );
 
-      // Animate the notification bell if there are new requests
-      if (combinedRequests.length > 0) {
-        const bell = document.querySelector(".notification-bell");
-        if (bell) {
-          bell.classList.add("animate-bounce");
-          setTimeout(() => bell.classList.remove("animate-bounce"), 1000);
+      // Clean up localStorage: remove already approved users
+      try {
+        const allUsers = await axios.get(`${API_URL}/api/users`);
+        const approvedEmails = allUsers.data
+          .filter((u: User) => u.roomId !== null)
+          .map((u: User) => u.email);
+
+        // Filter out requests that have already been approved
+        const cleanedRequests = localPendingRequests.filter(
+          (req) => !approvedEmails.includes(req.email)
+        );
+
+        // Update localStorage if we removed any
+        if (cleanedRequests.length !== localPendingRequests.length) {
+          localStorage.setItem(
+            "pendingRoomRequests",
+            JSON.stringify(cleanedRequests)
+          );
         }
+
+        // Use cleaned requests instead
+        const localRequestsAsUsers: User[] = cleanedRequests.map((req) => ({
+          id: safeIdConversion(req.id),
+          username: req.username,
+          email: req.email,
+          phoneNumber: req.phoneNumber || "",
+          roomId: null,
+          role: "PENDING_USER",
+          pendingRegistration: true,
+          requestedRoomId: req.requestedRoomId,
+          // Copy additional rental properties
+          roomNumber: req.roomNumber,
+          durasiSewa: req.durasiSewa,
+          tanggalMulai: req.tanggalMulai,
+          metodePembayaran: req.metodePembayaran,
+          totalPembayaran: req.totalPembayaran,
+        }));
+
+        // Combine API results with local storage results (avoiding duplicates)
+        let combinedRequests = [...apiRequests];
+
+        // Only add local requests that aren't already in the API requests
+        for (const localReq of localRequestsAsUsers) {
+          if (
+            !apiRequests.some(
+              (apiReq) =>
+                apiReq.email === localReq.email &&
+                apiReq.requestedRoomId === localReq.requestedRoomId
+            )
+          ) {
+            combinedRequests.push(localReq);
+          }
+        }
+
+        setPendingRequests(combinedRequests);
+        setNotificationCount(combinedRequests.length);
+
+        // Animate the notification bell if there are new requests
+        if (combinedRequests.length > 0) {
+          const bell = document.querySelector(".notification-bell");
+          if (bell) {
+            bell.classList.add("animate-bounce");
+            setTimeout(() => bell.classList.remove("animate-bounce"), 1000);
+          }
+        }
+      } catch (cleanupError) {
+        console.warn("Error during cleanup:", cleanupError);
+        // Fall back to original logic without cleanup
+        const localRequestsAsUsers: User[] = localPendingRequests.map(
+          (req) => ({
+            id: safeIdConversion(req.id),
+            username: req.username,
+            email: req.email,
+            phoneNumber: req.phoneNumber || "",
+            roomId: null,
+            role: "PENDING_USER",
+            pendingRegistration: true,
+            requestedRoomId: req.requestedRoomId,
+            roomNumber: req.roomNumber,
+            durasiSewa: req.durasiSewa,
+            tanggalMulai: req.tanggalMulai,
+            metodePembayaran: req.metodePembayaran,
+            totalPembayaran: req.totalPembayaran,
+          })
+        );
+
+        let combinedRequests = [...apiRequests];
+        for (const localReq of localRequestsAsUsers) {
+          if (
+            !apiRequests.some(
+              (apiReq) =>
+                apiReq.email === localReq.email &&
+                apiReq.requestedRoomId === localReq.requestedRoomId
+            )
+          ) {
+            combinedRequests.push(localReq);
+          }
+        }
+
+        setPendingRequests(combinedRequests);
+        setNotificationCount(combinedRequests.length);
       }
     } catch (err) {
       console.error("Error in fetchPendingRegistrations:", err);
@@ -231,101 +284,258 @@ export default function EditAkunPenghuni() {
       );
 
       if (isLocalRequest) {
-        // For localStorage requests, we'll create a new user with the requested room
-        try {
-          // First register the user through the existing API
-          const registerResponse = await axios.post(
-            `${API_URL}/api/auth/register-direct`,
-            {
-              username: isLocalRequest.username,
-              email: isLocalRequest.email,
-              password: "Password123", // Default password that user can reset later
-              phoneNumber: isLocalRequest.phoneNumber || "",
-              role: "USER",
-            }
-          );
+        // For localStorage requests, check if user already exists (has userId)
+        const existingUserId = (isLocalRequest as any).userId;
 
-          if (registerResponse.status === 200) {
-            // User created successfully, now let's try to assign the room
-            // We need to get the created user's ID
-            const allUsers = await axios.get(`${API_URL}/api/users`);
-            const createdUser = allUsers.data.find(
-              (u: User) => u.email === isLocalRequest.email
+        try {
+          let userIdToAssign = existingUserId;
+
+          // If no userId, need to create user first OR check if already exists
+          if (!existingUserId) {
+            // First, check if user already exists in database
+            try {
+              const allUsers = await axios.get(`${API_URL}/api/users`);
+              const existingUser = allUsers.data.find(
+                (u: User) =>
+                  u.email === isLocalRequest.email ||
+                  u.username === isLocalRequest.username
+              );
+
+              if (existingUser) {
+                userIdToAssign = existingUser.id;
+
+                // Check if user already has a room
+                if (existingUser.roomId) {
+                  // User already has room, remove from localStorage and show message
+                  const localRequests = JSON.parse(
+                    localStorage.getItem("pendingRoomRequests") || "[]"
+                  );
+                  const updatedRequests = localRequests.filter(
+                    (req: PendingRegistrationRequest) =>
+                      req.email !== isLocalRequest.email
+                  );
+                  localStorage.setItem(
+                    "pendingRoomRequests",
+                    JSON.stringify(updatedRequests)
+                  );
+
+                  // Update state
+                  setPendingRequests(
+                    pendingRequests.filter((req) => req.id !== userId)
+                  );
+                  setNotificationCount((prev) => prev - 1);
+
+                  throw new Error(
+                    `User ${existingUser.username} sudah memiliki kamar dengan ID ${existingUser.roomId}. Permintaan sudah diproses sebelumnya.`
+                  );
+                }
+              } else {
+                // User doesn't exist, create new one
+
+                // Validate required fields before sending
+                if (
+                  !isLocalRequest.username ||
+                  !isLocalRequest.username.trim()
+                ) {
+                  throw new Error("Username tidak boleh kosong");
+                }
+
+                if (!isLocalRequest.email || !isLocalRequest.email.trim()) {
+                  throw new Error("Email tidak boleh kosong");
+                }
+
+                // Validate email format
+                const emailRegex = /^[A-Za-z0-9+_.-]+@(.+)$/;
+                if (!emailRegex.test(isLocalRequest.email)) {
+                  throw new Error("Format email tidak valid");
+                }
+
+                // Prepare phone number with fallback
+                const phoneNumber =
+                  isLocalRequest.phoneNumber?.trim() || "0000000000";
+
+                // First register the user through the existing API
+
+                // First register the user through the existing API
+                const registerResponse = await axios.post(
+                  `${API_URL}/api/auth/register-direct`,
+                  {
+                    username: isLocalRequest.username.trim(),
+                    email: isLocalRequest.email.trim(),
+                    password: "KosApp@2024", // Default password
+                    phoneNumber: phoneNumber,
+                  }
+                );
+
+                if (registerResponse.status === 200) {
+                  // User created successfully, get the user ID
+                  const updatedUsers = await axios.get(`${API_URL}/api/users`);
+                  const createdUser = updatedUsers.data.find(
+                    (u: User) => u.email === isLocalRequest.email
+                  );
+
+                  if (createdUser) {
+                    userIdToAssign = createdUser.id;
+                  }
+                }
+              }
+            } catch (checkError) {
+              // If it's our custom error (user already has room), throw it
+              if (
+                checkError instanceof Error &&
+                checkError.message.includes("sudah memiliki kamar")
+              ) {
+                throw checkError;
+              }
+              // Otherwise, it might be network error checking users, so try to create user anyway
+              console.warn("Error checking existing users:", checkError);
+
+              // Try to create user
+
+              // Validate required fields
+              if (!isLocalRequest.username || !isLocalRequest.username.trim()) {
+                throw new Error("Username tidak boleh kosong");
+              }
+
+              if (!isLocalRequest.email || !isLocalRequest.email.trim()) {
+                throw new Error("Email tidak boleh kosong");
+              }
+
+              const emailRegex = /^[A-Za-z0-9+_.-]+@(.+)$/;
+              if (!emailRegex.test(isLocalRequest.email)) {
+                throw new Error("Format email tidak valid");
+              }
+
+              const phoneNumber =
+                isLocalRequest.phoneNumber?.trim() || "0000000000";
+
+              const registerResponse = await axios.post(
+                `${API_URL}/api/auth/register-direct`,
+                {
+                  username: isLocalRequest.username.trim(),
+                  email: isLocalRequest.email.trim(),
+                  password: "KosApp@2024",
+                  phoneNumber: phoneNumber,
+                }
+              );
+
+              if (registerResponse.status === 200) {
+                const allUsers = await axios.get(`${API_URL}/api/users`);
+                const createdUser = allUsers.data.find(
+                  (u: User) => u.email === isLocalRequest.email
+                );
+
+                if (createdUser) {
+                  userIdToAssign = createdUser.id;
+                }
+              }
+            }
+          } else {
+          }
+
+          // Now assign room to user (either newly created or existing)
+          if (userIdToAssign) {
+            // Assign the room to the user
+            await axios.put(
+              `${API_URL}/api/users/${userIdToAssign}/assign-user-room`,
+              { roomId: isLocalRequest.requestedRoomId }
             );
 
-            if (createdUser) {
-              // Assign the room to the user
-              await axios.put(
-                `${API_URL}/api/users/${createdUser.id}/assign-user-room`,
-                { roomId: isLocalRequest.requestedRoomId }
-              );
-
-              // Update the room status to "terisi" in the kamar API
-              try {
-                await axios
-                  .get(`${API_URL}/api/kamar/${isLocalRequest.requestedRoomId}`)
-                  .then((roomResponse) => {
-                    if (roomResponse.data) {
-                      axios.put(
-                        `${API_URL}/api/kamar/${isLocalRequest.requestedRoomId}`,
-                        {
-                          ...roomResponse.data,
-                          status: "terisi",
-                        }
-                      );
-                    }
-                  });
-              } catch (roomError) {
-                console.warn("Gagal memperbarui status kamar:", roomError);
-              }
-
-              // TODO: Ideally, we'd also save the rental information to a rentals table in the database
-              // For now, we can just show a success message that includes the rental details
-              let successMessage = `Penghuni ${
-                isLocalRequest.username
-              } berhasil terdaftar untuk kamar ${
-                isLocalRequest.roomNumber || isLocalRequest.requestedRoomId
-              }`;
-              if (isLocalRequest.durasiSewa) {
-                successMessage += `\nDetail sewa: ${isLocalRequest.durasiSewa} bulan, mulai ${isLocalRequest.tanggalMulai}`;
-                successMessage += `\nTotal pembayaran: Rp ${isLocalRequest.totalPembayaran?.toLocaleString()}`;
-              }
-
-              Swal.fire({
-                icon: "success",
-                title: "Permintaan Diterima",
-                text: successMessage,
-                confirmButtonColor: "#000",
-              });
-
-              // Remove this request from localStorage
-              const localRequests = JSON.parse(
-                localStorage.getItem("pendingRoomRequests") || "[]"
-              );
-              const updatedRequests = localRequests.filter(
-                (req: PendingRegistrationRequest) => `req-${userId}` !== req.id
-              );
-              localStorage.setItem(
-                "pendingRoomRequests",
-                JSON.stringify(updatedRequests)
-              );
-
-              // Update state
-              setPendingRequests(
-                pendingRequests.filter((req) => req.id !== userId)
-              );
-              setNotificationCount((prev) => prev - 1);
-
-              // Refresh the user list
-              fetchUsers();
+            // Update the room status to "terisi" in the kamar API
+            try {
+              await axios
+                .get(`${API_URL}/api/kamar/${isLocalRequest.requestedRoomId}`)
+                .then((roomResponse) => {
+                  if (roomResponse.data) {
+                    axios.put(
+                      `${API_URL}/api/kamar/${isLocalRequest.requestedRoomId}`,
+                      {
+                        ...roomResponse.data,
+                        status: "terisi",
+                      }
+                    );
+                  }
+                });
+            } catch (roomError) {
+              console.warn("Gagal memperbarui status kamar:", roomError);
             }
+
+            // TODO: Ideally, we'd also save the rental information to a rentals table in the database
+            // For now, we can just show a success message that includes the rental details
+            let successMessage = `Penghuni ${
+              isLocalRequest.username
+            } berhasil terdaftar untuk kamar ${
+              isLocalRequest.roomNumber || isLocalRequest.requestedRoomId
+            }`;
+            if (isLocalRequest.durasiSewa) {
+              successMessage += `\nDetail sewa: ${isLocalRequest.durasiSewa} bulan, mulai ${isLocalRequest.tanggalMulai}`;
+              successMessage += `\nTotal pembayaran: Rp ${isLocalRequest.totalPembayaran?.toLocaleString()}`;
+            }
+
+            Swal.fire({
+              icon: "success",
+              title: "Permintaan Diterima",
+              text: successMessage,
+              confirmButtonColor: "#000",
+            });
+
+            // Remove this request from localStorage
+            const localRequests = JSON.parse(
+              localStorage.getItem("pendingRoomRequests") || "[]"
+            );
+            const updatedRequests = localRequests.filter(
+              (req: PendingRegistrationRequest) =>
+                req.id !== String(isLocalRequest.id)
+            );
+            localStorage.setItem(
+              "pendingRoomRequests",
+              JSON.stringify(updatedRequests)
+            );
+
+            // Update state
+            setPendingRequests(
+              pendingRequests.filter((req) => req.id !== userId)
+            );
+            setNotificationCount((prev) => prev - 1);
+
+            // Refresh the user list
+            fetchUsers();
+          } else {
+            throw new Error("Gagal mendapatkan user ID");
           }
         } catch (error) {
-          console.error("Error creating user from local request:", error);
+          console.error("Error processing room request:", error);
+
+          // Enhanced error handling
+          const axiosError = error as AxiosError<ErrorResponse>;
+          let errorMessage = "Terjadi kesalahan saat memproses permintaan";
+          let errorDetails = "";
+
+          if (axiosError.response?.data?.message) {
+            errorMessage = axiosError.response.data.message;
+          } else if (error instanceof Error && error.message) {
+            // Handle validation errors from our frontend checks
+            errorMessage = error.message;
+          } else if (axiosError.response?.status === 400) {
+            errorMessage =
+              "Data tidak valid. Periksa kembali data yang dimasukkan.";
+            errorDetails =
+              "Pastikan username, email, dan nomor telepon sudah terisi dengan benar.";
+          } else if (axiosError.message) {
+            errorMessage = `Error: ${axiosError.message}`;
+          }
+
+          console.error("Detailed error:", {
+            status: axiosError.response?.status,
+            data: axiosError.response?.data,
+            message: axiosError.message,
+          });
+
           Swal.fire({
             icon: "error",
             title: "Gagal Menyetujui",
-            text: "Terjadi kesalahan saat membuat akun pengguna",
+            text: errorMessage,
+            footer: errorDetails || undefined,
             confirmButtonColor: "#000",
           });
         }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import NavItem from "./NavItem";
 import { LogOut, User } from "lucide-react";
@@ -29,8 +29,6 @@ const Navbar = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
 
   useEffect(() => {
     // if (!window.googleTranslateElementInit) {
@@ -69,14 +67,6 @@ const Navbar = ({
     // }
   }, []);
 
-  const toggleDropdown = () => {
-    setDropdownOpen(!dropdownOpen);
-  };
-
-  const toggleLanguageDropdown = () => {
-    setLanguageDropdownOpen(!languageDropdownOpen);
-  };
-
   return (
     <nav className="fixed top-0 left-0 right-0 bg-yellow-500 text-white shadow-md px-4 py-3 z-50">
       <div className="flex justify-between items-center">
@@ -87,13 +77,13 @@ const Navbar = ({
         <div className="flex items-center space-x-4">
           <NavItem
             icon={HomeIcon}
-            isActive={location.pathname === `/Home${roomId}`}
-            onClick={() => navigate(`/Home${roomId}`)}
+            isActive={location.pathname === `/room/${roomId}`}
+            onClick={() => navigate(`/room/${roomId}`)}
           />
           <NavItem
             icon={<User size={24} />}
-            isActive={location.pathname === `/Profile${roomId}`}
-            onClick={() => navigate(`/Profile${roomId}`)}
+            isActive={location.pathname === `/room/${roomId}/profile`}
+            onClick={() => navigate(`/room/${roomId}/profile`)}
           />
           <NavItem
             icon={<LogOut size={24} />}

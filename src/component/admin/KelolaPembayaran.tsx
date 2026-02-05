@@ -16,7 +16,7 @@ import { JSX } from "react/jsx-runtime";
 import axios, { AxiosResponse } from "axios";
 import Commet from "./Commet";
 
-const API_BASE_URL = "https://manage-kost-production.up.railway.app"; // production URL
+const API_BASE_URL = "http://141.11.25.167:8080"; // production URL
 
 // Define types for the data
 interface PaymentItem {
@@ -27,6 +27,24 @@ interface PaymentItem {
   status: string;
   roomId?: number;
   userId?: number;
+}
+
+// Interface for backend Pembayaran model
+interface Pembayaran {
+  id: number;
+  kamarId: number;
+  userId?: number;
+  kamar: string;
+  penghuni: string;
+  nominal: number;
+  status: string;
+  tanggalJatuhTempo?: string;
+  tanggalBayar?: string;
+  bulanBayar?: string;
+  tahunBayar?: number;
+  catatan?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Updated interface to match the backend Kamar model
@@ -85,111 +103,117 @@ interface ApiResponse<T> {
 const handleDownloadPDF = (item: PaymentItem) => {
   // Buat instance PDF baru
   const doc = new jsPDF();
-  
+
   // Tambahkan margin
   const margin = 20;
   let y = margin;
-  
+
   // Header Invoice
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
   doc.text("INVOICE", margin, y);
-  
+
   // Logo/Nama Perusahaan
   doc.setFontSize(12);
   doc.setFont("helvetica", "normal");
   doc.text("KOSAPP", 160, y);
   doc.setFontSize(8);
   doc.text("Manajemen Kos Terpercaya", 160, y + 5);
-  
+
   // Garis pembatas header
   y += 15;
   doc.setLineWidth(0.5);
   doc.line(margin, y, 190, y);
   y += 10;
-  
+
   // Informasi Kepada
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.text("KEPADA :", margin, y);
-  
+
   // Informasi Tanggal
   doc.text("TANGGAL :", 130, y);
   y += 5;
-  
+
   // Data Penerima
   doc.setFont("helvetica", "normal");
   doc.text(item.penghuni, margin, y);
-  
+
   // Data Tanggal
   const today = new Date();
   const formattedDate = today.toLocaleDateString("id-ID", {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
   });
   doc.text(formattedDate, 130, y);
   y += 5;
-  
+
   // Email (jika tersedia)
   doc.text("penghuni@kosapp.com", margin, y);
-  
+
   // Nomor Invoice
   doc.setFont("helvetica", "bold");
   doc.text("NO INVOICE :", 130, y);
   y += 5;
   doc.setFont("helvetica", "normal");
-  doc.text(`KOS-${item.id}-${today.getFullYear()}${(today.getMonth()+1).toString().padStart(2, '0')}`, 130, y);
-  
+  doc.text(
+    `KOS-${item.id}-${today.getFullYear()}${(today.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}`,
+    130,
+    y
+  );
+
   // Tabel Header
   y += 15;
   doc.setFont("helvetica", "bold");
   doc.rect(margin, y, 170, 10);
   doc.setFillColor(240, 240, 240);
-  doc.rect(margin, y, 170, 10, 'F');
-  
+  doc.rect(margin, y, 170, 10, "F");
+
   doc.text("KETERANGAN", margin + 5, y + 7);
   doc.text("HARGA", 90, y + 7);
   doc.text("JML", 140, y + 7);
   doc.text("TOTAL", 170, y + 7);
   y += 10;
-  
+
   // Item Pembayaran
   doc.setFont("helvetica", "normal");
   doc.rect(margin, y, 170, 10);
   doc.text(`Sewa Kamar ${item.kamar}`, margin + 5, y + 7);
-  
+
   // Extract numeric value from nominal string (removing "Rp " and thousand separators)
   const numericValue = item.nominal.replace(/[^\d]/g, "");
   const hargaSewa = parseInt(numericValue);
-  
+
   doc.text(item.nominal, 90, y + 7);
   doc.text("1", 140, y + 7);
   doc.text(item.nominal, 170, y + 7);
   y += 10;
-  
+
   // Garis untuk pembayaran
   y += 10;
   doc.setFont("helvetica", "bold");
   doc.text("PEMBAYARAN :", margin, y);
   y += 5;
-  
+
   // Detail Pembayaran
   doc.setFont("helvetica", "normal");
   doc.text(`Nama : KosApp`, margin, y);
   doc.text("SUB TOTAL :", 130, y);
   doc.text(item.nominal, 170, y);
   y += 5;
-  
+
   doc.text(`No. Rek : 1234-567-890`, margin, y);
-  
+
   // Pajak (10% asumsi)
   const pajak = Math.round(hargaSewa * 0.1);
   doc.text("PAJAK :", 130, y);
   doc.text(`Rp ${pajak.toLocaleString("id-ID")}`, 170, y);
   y += 5;
-  
+
   // Total
   doc.setLineWidth(0.2);
   doc.line(130, y, 190, y);
@@ -198,19 +222,19 @@ const handleDownloadPDF = (item: PaymentItem) => {
   doc.text("TOTAL :", 130, y);
   const totalBayar = hargaSewa + pajak;
   doc.text(`Rp ${totalBayar.toLocaleString("id-ID")}`, 170, y);
-  
+
   // Terima kasih
   y += 20;
   doc.setFont("helvetica", "bold");
   doc.text("TERIMAKASIH ATAS", margin, y);
   y += 5;
   doc.text("PEMBAYARAN ANDA", margin, y);
-  
+
   // Tanda tangan
   doc.text("Admin KosApp", 150, y);
   doc.setLineWidth(0.5);
   doc.line(140, y + 10, 180, y + 10);
-  
+
   // Download PDF dengan nama yang sesuai
   doc.save(`Invoice_Kamar_${item.kamar}.pdf`);
 };
@@ -243,92 +267,105 @@ export default function KelolaPembayaran() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // 1. Fetch rooms data - ini sudah berfungsi
+        // 1. Fetch pembayaran data directly
+        const pembayaranResponse = await axios.get<Pembayaran[]>(
+          `${API_BASE_URL}/api/pembayaran`
+        );
+
+        // 2. Also fetch rooms data for create functionality
         const roomsResponse = await axios.get<KamarData[]>(
           `${API_BASE_URL}/api/kamar`
         );
         setRooms(roomsResponse.data);
 
-        // 2. Fetch users data - tanpa ketergantungan token
-        let usersResponse: AxiosResponse<UserData[]> | undefined;
-        try {
-          // Coba endpoint tanpa token
-          usersResponse = await axios.get(`${API_BASE_URL}/api/users`);
-        } catch (err) {
-          console.log("Endpoint baru gagal, mencoba endpoint lama");
-          // Jika gagal, coba endpoint lama
-          usersResponse = await axios.get(`${API_BASE_URL}/user`);
-        }
-
-        if (!usersResponse || !usersResponse.data) {
-          throw new Error("Failed to fetch user data");
-        }
-
-        setUsers(usersResponse.data);
-
-        // 3. Fetch profiles data
-        const profilesResponse = await axios.get<ProfileData[]>(
-          `${API_BASE_URL}/api/profiles`
+        // 3. Transform pembayaran data to PaymentItem format
+        const transformedData: PaymentItem[] = pembayaranResponse.data.map(
+          (payment) => ({
+            id: payment.id,
+            kamar: payment.kamar || "N/A",
+            penghuni: payment.penghuni || "N/A",
+            nominal: `Rp ${payment.nominal?.toLocaleString("id-ID") || 0}`,
+            status: payment.status || "Belum Bayar",
+            roomId: payment.kamarId,
+            userId: payment.userId,
+          })
         );
-        setProfiles(profilesResponse.data);
 
-        // 4. Combine data to create payment list
-        const combinedData: PaymentItem[] = roomsResponse.data.map((room) => {
-          const user = usersResponse?.data?.find(
-            (u: UserData) => u.roomId === room.id
-          );
-
-          return {
-            id: room.id,
-            kamar: room.nomorKamar || "N/A",
-            penghuni: user?.username || "N/A",
-            nominal: `Rp ${room.hargaBulanan?.toLocaleString("id-ID") || 0}`,
-            status: room.statusPembayaran || "Belum Bayar",
-            roomId: room.id,
-            userId: user?.id,
-          };
-        });
-
-        setPembayaran(combinedData);
+        setPembayaran(transformedData);
         setError(null);
       } catch (err) {
-        console.error("Error fetching data:", err);
+        console.error("Error fetching pembayaran data:", err);
 
-        // 5. Tambahkan data dummy untuk fallback
-        const dummyPembayaran: PaymentItem[] = [
-          {
-            id: 1,
-            kamar: "Kamar 101",
-            penghuni: "Bambang S",
-            nominal: "Rp 1.500.000",
-            status: "Lunas",
-            roomId: 101,
-            userId: 1,
-          },
-          {
-            id: 2,
-            kamar: "Kamar 102",
-            penghuni: "Dewi K",
-            nominal: "Rp 1.200.000",
-            status: "Menunggu",
-            roomId: 102,
-            userId: 2,
-          },
-          {
-            id: 3,
-            kamar: "Kamar 103",
-            penghuni: "Rudi H",
-            nominal: "Rp 1.300.000",
-            status: "Belum Bayar",
-            roomId: 103,
-            userId: 3,
-          },
-        ];
+        // Fallback: Try to get data from kamar endpoint
+        try {
+          const roomsResponse = await axios.get<KamarData[]>(
+            `${API_BASE_URL}/api/kamar`
+          );
+          setRooms(roomsResponse.data);
 
-        setPembayaran(dummyPembayaran);
-        setError(
-          "Menggunakan data dummy karena gagal mengambil data dari server"
-        );
+          const usersResponse = await axios.get<UserData[]>(
+            `${API_BASE_URL}/api/users`
+          );
+
+          const combinedData: PaymentItem[] = roomsResponse.data.map((room) => {
+            const user = usersResponse.data.find(
+              (u: UserData) => u.roomId === room.id
+            );
+
+            return {
+              id: room.id,
+              kamar: room.nomorKamar || "N/A",
+              penghuni: user?.username || "N/A",
+              nominal: `Rp ${room.hargaBulanan?.toLocaleString("id-ID") || 0}`,
+              status: room.statusPembayaran || "Belum Bayar",
+              roomId: room.id,
+              userId: user?.id,
+            };
+          });
+
+          setPembayaran(combinedData);
+          setError(
+            "Menggunakan data dari kamar (endpoint pembayaran tidak tersedia)"
+          );
+        } catch (fallbackErr) {
+          console.error("Error fetching fallback data:", fallbackErr);
+
+          // Final fallback: use dummy data
+          const dummyPembayaran: PaymentItem[] = [
+            {
+              id: 1,
+              kamar: "Kamar 101",
+              penghuni: "Bambang S",
+              nominal: "Rp 1.500.000",
+              status: "Lunas",
+              roomId: 101,
+              userId: 1,
+            },
+            {
+              id: 2,
+              kamar: "Kamar 102",
+              penghuni: "Dewi K",
+              nominal: "Rp 1.200.000",
+              status: "Menunggu",
+              roomId: 102,
+              userId: 2,
+            },
+            {
+              id: 3,
+              kamar: "Kamar 103",
+              penghuni: "Rudi H",
+              nominal: "Rp 1.300.000",
+              status: "Belum Bayar",
+              roomId: 103,
+              userId: 3,
+            },
+          ];
+
+          setPembayaran(dummyPembayaran);
+          setError(
+            "Menggunakan data dummy karena gagal mengambil data dari server"
+          );
+        }
       } finally {
         setLoading(false);
       }
@@ -388,33 +425,33 @@ export default function KelolaPembayaran() {
   };
 
   const handleDelete = async (id: number) => {
+    if (
+      !window.confirm("Apakah Anda yakin ingin menghapus data pembayaran ini?")
+    ) {
+      return;
+    }
+
     try {
-      await axios.delete(`${API_BASE_URL}/api/kamar/${id}`);
+      await axios.delete(`${API_BASE_URL}/api/pembayaran/${id}`);
       setPembayaran(pembayaran.filter((item) => item.id !== id));
       if (selectedId === id) {
         resetForm();
         setShowForm(false);
       }
+      alert("Data pembayaran berhasil dihapus");
     } catch (err) {
       console.error("Error deleting payment:", err);
-      alert("Failed to delete payment. Please try again.");
+      alert("Gagal menghapus data pembayaran. Silakan coba lagi.");
     }
   };
 
   const handleSave = async () => {
     try {
       if (selectedId) {
-        // Get the room data
-        const roomResponse = await axios.get(
-          `${API_BASE_URL}/api/kamar/${selectedId}`
+        // Update existing payment status
+        await axios.patch(
+          `${API_BASE_URL}/api/pembayaran/${selectedId}/status?status=${formData.status}`
         );
-        const roomData = roomResponse.data;
-
-        // Update status
-        roomData.statusPembayaran = formData.status;
-
-        // Update room data
-        await axios.put(`${API_BASE_URL}/api/kamar/${selectedId}`, roomData);
 
         // Update local state
         setPembayaran(
@@ -427,15 +464,59 @@ export default function KelolaPembayaran() {
               : item
           )
         );
+
+        alert("Status pembayaran berhasil diupdate!");
       } else {
-        // For new payments, we would need additional APIs
-        alert("Adding new payments is not implemented in this version");
+        // Create new payment - we need kamarId
+        if (!formData.kamar) {
+          alert("Silakan pilih kamar terlebih dahulu");
+          return;
+        }
+
+        // Find the room by nomor kamar to get the kamarId
+        const room = rooms.find((r) => r.nomorKamar === formData.kamar);
+        if (!room) {
+          alert("Kamar tidak ditemukan");
+          return;
+        }
+
+        const newPembayaran = {
+          kamarId: room.id,
+          status: formData.status,
+          nominal: parseFloat(formData.totalTagihan.replace(/[^\d]/g, "")),
+          tanggalJatuhTempo: formData.jatuhTempo
+            ? new Date(formData.jatuhTempo).toISOString()
+            : null,
+        };
+
+        const response = await axios.post(
+          `${API_BASE_URL}/api/pembayaran`,
+          newPembayaran
+        );
+
+        // Add to local state
+        const savedPembayaran = response.data;
+        setPembayaran([
+          ...pembayaran,
+          {
+            id: savedPembayaran.id,
+            kamar: savedPembayaran.kamar,
+            penghuni: savedPembayaran.penghuni,
+            nominal: `Rp ${savedPembayaran.nominal?.toLocaleString("id-ID")}`,
+            status: savedPembayaran.status,
+            roomId: savedPembayaran.kamarId,
+            userId: savedPembayaran.userId,
+          },
+        ]);
+
+        alert("Pembayaran baru berhasil ditambahkan!");
       }
 
       setShowForm(false);
+      resetForm();
     } catch (err) {
       console.error("Error saving payment:", err);
-      alert("Failed to save payment. Please try again.");
+      alert("Gagal menyimpan data pembayaran. Silakan coba lagi.");
     }
   };
 
@@ -613,7 +694,6 @@ export default function KelolaPembayaran() {
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
-                       
                       </div>
                     </td>
                   </tr>
@@ -651,12 +731,38 @@ export default function KelolaPembayaran() {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Bed className="h-5 w-5 text-gray-400" />
                   </div>
-                  <input
-                    type="text"
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg bg-gray-100"
-                    value={formData.kamar}
-                    readOnly
-                  />
+                  {selectedId ? (
+                    <input
+                      type="text"
+                      className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg bg-gray-100"
+                      value={formData.kamar}
+                      readOnly
+                    />
+                  ) : (
+                    <select
+                      className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent appearance-none bg-white"
+                      value={formData.kamar}
+                      onChange={(e) => {
+                        const selectedRoom = rooms.find(
+                          (r) => r.nomorKamar === e.target.value
+                        );
+                        if (selectedRoom) {
+                          setFormData({
+                            ...formData,
+                            kamar: selectedRoom.nomorKamar,
+                            totalTagihan: selectedRoom.hargaBulanan.toString(),
+                          });
+                        }
+                      }}
+                    >
+                      <option value="">Pilih Kamar</option>
+                      {rooms.map((room) => (
+                        <option key={room.id} value={room.nomorKamar}>
+                          {room.nomorKamar} - {room.title || room.description}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -672,6 +778,7 @@ export default function KelolaPembayaran() {
                     type="text"
                     className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg bg-gray-100"
                     value={formData.penghuni}
+                    placeholder={selectedId ? "" : "Akan terisi otomatis"}
                     readOnly
                   />
                 </div>
@@ -688,7 +795,14 @@ export default function KelolaPembayaran() {
                   <input
                     type="text"
                     className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg bg-gray-100"
-                    value={formData.totalTagihan}
+                    value={
+                      formData.totalTagihan
+                        ? `Rp ${parseInt(formData.totalTagihan).toLocaleString(
+                            "id-ID"
+                          )}`
+                        : ""
+                    }
+                    placeholder="Akan terisi otomatis"
                     readOnly
                   />
                 </div>
@@ -715,6 +829,22 @@ export default function KelolaPembayaran() {
                   </select>
                 </div>
               </div>
+
+              {!selectedId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tanggal Jatuh Tempo (Opsional)
+                  </label>
+                  <input
+                    type="date"
+                    className="block w-full px-3 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                    value={formData.jatuhTempo}
+                    onChange={(e) =>
+                      setFormData({ ...formData, jatuhTempo: e.target.value })
+                    }
+                  />
+                </div>
+              )}
             </div>
 
             <div className="px-6 py-4 bg-gray-50 flex justify-end gap-4">

@@ -7,7 +7,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import Commet from "./Commet";
 
-axios.defaults.baseURL = "https://manage-kost-production.up.railway.app"; // Updated backend base URL
+axios.defaults.baseURL = "http://141.11.25.167:8080"; // Updated backend base URL
 
 type Room = {
   id: number;
@@ -15,6 +15,10 @@ type Room = {
   status: "kosong" | "terisi" | "pending"; // Matches backend field
   hargaBulanan: number; // Matches backend field
   fasilitas: string[]; // Split from backend string
+  title?: string; // Optional - backend will set default
+  description?: string; // Optional - backend will set default
+  price?: number; // Optional - backend will set default
+  statusPembayaran?: string; // Optional
 };
 
 type ModalType = "edit" | "add" | "delete" | null;
@@ -28,6 +32,9 @@ export default function InfoKamar() {
     status: "kosong",
     hargaBulanan: undefined,
     fasilitas: [],
+    title: "",
+    description: "",
+    price: undefined,
   });
   const [facilityInput, setFacilityInput] = useState("");
   const [notification, setNotification] = useState<string | null>(null);
@@ -416,6 +423,43 @@ export default function InfoKamar() {
                       hargaBulanan: e.target.value
                         ? parseInt(e.target.value)
                         : undefined, // Allow empty value
+                      price: e.target.value
+                        ? parseInt(e.target.value)
+                        : undefined, // Auto-sync price with hargaBulanan
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Judul Kamar (Opsional)
+                </label>
+                <input
+                  type="text"
+                  className="w-full border rounded-md p-2"
+                  placeholder="Akan otomatis diisi jika kosong"
+                  value={newRoom.title || ""}
+                  onChange={(e) =>
+                    setNewRoom({
+                      ...newRoom,
+                      title: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Deskripsi (Opsional)
+                </label>
+                <textarea
+                  className="w-full border rounded-md p-2"
+                  rows={3}
+                  placeholder="Akan otomatis diisi jika kosong"
+                  value={newRoom.description || ""}
+                  onChange={(e) =>
+                    setNewRoom({
+                      ...newRoom,
+                      description: e.target.value,
                     })
                   }
                 />

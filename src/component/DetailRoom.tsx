@@ -632,9 +632,7 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
           const usersResponse = await authApi.get("/users");
           const users = usersResponse.data || [];
 
-          console.log("Data yang diterima dari API:", users);
-          console.log("Email form:", formData.email);
-          console.log("Nomor telepon form:", formData.phone);
+
 
           // Cari user dengan nomor telepon atau email yang sesuai
           const matchingUser = users.find(
@@ -656,13 +654,7 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
                 user.email.toLowerCase() === formData.email.toLowerCase();
 
               // Log untuk debugging
-              if (phoneMatch || emailMatch) {
-                console.log("Pencocokan ditemukan:", {
-                  user,
-                  phoneMatch,
-                  emailMatch,
-                });
-              }
+                // Match found, no logging needed for production
 
               return phoneMatch || emailMatch;
             }
@@ -671,11 +663,8 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
           if (matchingUser) {
             userVerified = true;
             verifiedUserId = matchingUser.id;
-            console.log("User diverifikasi:", matchingUser);
           } else {
-            console.log(
-              "Tidak ditemukan pengguna dengan nomor telepon atau email tersebut"
-            );
+
           }
         } catch (verifyError) {
           console.warn("Gagal memverifikasi data pengguna:", verifyError);
@@ -716,7 +705,6 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
           requestData
         );
 
-        console.log("Permintaan sewa kamar terkirim:", response.data);
 
         // Simpan data tambahan untuk UI/notifikasi lokal
         try {
@@ -749,10 +737,7 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
             JSON.stringify(existingRequests)
           );
 
-          console.log(
-            "Data permintaan disimpan untuk review admin:",
-            fullRequestData.id
-          );
+
         } catch (storageError) {
           console.error(
             "Gagal menyimpan data tambahan ke localStorage:",
@@ -1390,7 +1375,6 @@ const DetailRoom: React.FC<DetailRoomProps> = ({ card, onClose }) => {
                     whileHover={isMobile ? {} : { scale: 1.02 }}
                     whileTap={isMobile ? {} : { scale: 0.98 }}
                     onClick={(e) => {
-                      console.log("Submit button clicked");
                       handleSubmit(e);
                     }}
                   >

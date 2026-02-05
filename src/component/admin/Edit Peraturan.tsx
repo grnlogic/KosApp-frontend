@@ -20,7 +20,7 @@ const EditPeraturan: React.FC = () => {
   // Fetch rules from backend
   useEffect(() => {
     setIsLoading(true);
-    fetch("https://manage-kost-production.up.railway.app/api/peraturan")
+    fetch("http://141.11.25.167:8080/api/peraturan")
       .then((res) => res.json())
       .then((data) =>
         setRules(
@@ -55,8 +55,8 @@ const EditPeraturan: React.FC = () => {
     const method = mode === "edit" ? "PUT" : "POST";
     const url =
       mode === "edit"
-        ? `https://manage-kost-production.up.railway.app/api/peraturan/${selectedRule?.id}`
-        : "https://manage-kost-production.up.railway.app/api/peraturan";
+        ? `http://141.11.25.167:8080/api/peraturan/${selectedRule?.id}`
+        : "http://141.11.25.167:8080/api/peraturan";
 
     fetch(url, {
       method,
@@ -71,9 +71,7 @@ const EditPeraturan: React.FC = () => {
     })
       .then(() => {
         // Refresh rules after saving
-        return fetch(
-          "https://manage-kost-production.up.railway.app/api/peraturan"
-        )
+        return fetch("http://141.11.25.167:8080/api/peraturan")
           .then((res) => res.json())
           .then((data) =>
             setRules(
@@ -113,17 +111,12 @@ const EditPeraturan: React.FC = () => {
         cancelButtonText: "Batal",
       }).then((result) => {
         if (result.isConfirmed) {
-          fetch(
-            `https://manage-kost-production.up.railway.app/api/peraturan/${selectedRule.id}`,
-            {
-              method: "DELETE",
-            }
-          )
+          fetch(`http://141.11.25.167:8080/api/peraturan/${selectedRule.id}`, {
+            method: "DELETE",
+          })
             .then(() => {
               // Refresh rules after deletion
-              return fetch(
-                "https://manage-kost-production.up.railway.app/api/peraturan"
-              )
+              return fetch("http://141.11.25.167:8080/api/peraturan")
                 .then((res) => res.json())
                 .then((data) =>
                   setRules(

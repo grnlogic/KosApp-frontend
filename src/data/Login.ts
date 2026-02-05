@@ -2,11 +2,11 @@ import Cookies from "js-cookie"; // Import js-cookie
 
 export const Login = async (username: string, password: string) => {
   try {
-    const apiUrl =
-      import.meta.env.VITE_API_URL ||
-      "https://manage-kost-production.up.railway.app";
+    const apiBaseUrl =
+      process.env.REACT_APP_API_BASE_URL ||
+      "http://141.11.25.167:8080";
 
-    const response = await fetch(`${apiUrl}/api/auth/login`, {
+    const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

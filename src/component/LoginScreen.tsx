@@ -35,8 +35,7 @@ const LoginScreen = ({
   const [animate, setAnimate] = useState(true);
   // Replace undefined with a fallback URL
   const backendUrl =
-    process.env.REACT_APP_BACKEND_URL ||
-    "https://manage-kost-production.up.railway.app";
+    process.env.REACT_APP_BACKEND_URL || "http://141.11.25.167:8080";
   const [logoMove, setLogoMove] = useState(false);
   const [logoColorChange, setLogoColorChange] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -192,31 +191,102 @@ const LoginScreen = ({
       //mereset percobaan login jika berhasil
       setLoginAttempts(0);
 
+      const data = response.data;
+
+      // === LOG PENGUJIAN: Response dari Backend ===
+      console.log("╔════════════════════════════════════════════════════════");
+      console.log("║ LOGIN SUCCESS LOG");
+      console.log("╠════════════════════════════════════════════════════════");
+      console.log("║ Timestamp:", new Date().toISOString());
+      console.log("║ Username:", data.username);
+      console.log("║ Email:", data.email);
+      console.log("║ Role:", data.role);
+      console.log("║ Room ID:", data.roomId);
+      console.log("║ Phone Number:", data.phoneNumber);
+      console.log("╚════════════════════════════════════════════════════════");
+
       // Pastikan cookie non-HTTP-only "isLoggedIn" disimpan dengan benar
+      // Gunakan sameSite: "Lax" agar lebih kompatibel dengan refresh
       Cookies.set("isLoggedIn", "true", {
-        expires: 7,
+        expires: 7, // 7 hari
         path: "/",
-        sameSite: "Strict",
+        sameSite: "Lax", // Lebih fleksibel dari "Strict"
+        secure: window.location.protocol === "https:", // Hanya secure jika HTTPS
       });
 
-      const data = response.data;
+      // Simpan role dan roomId ke cookie juga untuk persistensi
+      if (data.role) {
+        Cookies.set("userRole", data.role, {
+          expires: 7,
+          path: "/",
+          sameSite: "Lax",
+          secure: window.location.protocol === "https:",
+        });
+      }
+
+      if (data.roomId) {
+        Cookies.set("userRoomId", data.roomId, {
+          expires: 7,
+          path: "/",
+          sameSite: "Lax",
+          secure: window.location.protocol === "https:",
+        });
+      }
+
+      // === LOG PENGUJIAN: Cookies yang Tersimpan ===
+      console.log("╔════════════════════════════════════════════════════════");
+      console.log("║ COOKIES SAVED");
+      console.log("╠════════════════════════════════════════════════════════");
+      console.log("║ isLoggedIn:", Cookies.get("isLoggedIn"));
+      console.log("║ userRole:", Cookies.get("userRole"));
+      console.log("║ userRoomId:", Cookies.get("userRoomId"));
+      console.log("║ All Cookies:", document.cookie);
+      console.log("╚════════════════════════════════════════════════════════");
+
       setIsLoggedIn(true);
 
-      // Simpan data pengguna ke localStorage
-      localStorage.setItem(
-        "userData",
-        JSON.stringify({
-          username: data.username,
-          email: data.email,
-          phoneNumber: data.phoneNumber,
-        })
+      // Simpan data pengguna ke localStorage dengan lebih banyak informasi
+      const userDataToStore = {
+        username: data.username,
+        email: data.email,
+        phoneNumber: data.phoneNumber,
+        role: data.role,
+        roomId: data.roomId,
+        loginTime: new Date().toISOString(), // Tambahkan timestamp
+      };
+
+      localStorage.setItem("userData", JSON.stringify(userDataToStore));
+
+      // === LOG PENGUJIAN: LocalStorage yang Tersimpan ===
+      console.log("╔════════════════════════════════════════════════════════");
+      console.log("║ LOCALSTORAGE SAVED");
+      console.log("╠════════════════════════════════════════════════════════");
+      console.log("║ userData:", localStorage.getItem("userData"));
+      console.log(
+        "║ Parsed userData:",
+        JSON.parse(localStorage.getItem("userData") || "{}")
       );
+      console.log("╚════════════════════════════════════════════════════════");
 
       // Set roomId if available
       if (data.roomId) {
         setRoomId(data.roomId);
         // Save roomId to localStorage for persistent access
         localStorage.setItem("roomId", data.roomId);
+        console.log(
+          "╔════════════════════════════════════════════════════════"
+        );
+        console.log("║ ROOM ID SAVED");
+        console.log(
+          "╠════════════════════════════════════════════════════════"
+        );
+        console.log(
+          "║ roomId in localStorage:",
+          localStorage.getItem("roomId")
+        );
+        console.log(
+          "╚════════════════════════════════════════════════════════"
+        );
       }
 
       // Handle role-based navigation
@@ -261,7 +331,7 @@ const LoginScreen = ({
             }).then(() => {
               // Navigate to the appropriate room page based on roomId
               if (data.roomId) {
-                navigate(`/Home${data.roomId}`); // Gunakan ini untuk semua kamar
+                navigate(`/room/${data.roomId}`); // Navigate to dynamic room route
               } else {
                 navigate("/choose-room"); // Jika tidak ada roomId
               }
@@ -383,28 +453,7 @@ const LoginScreen = ({
       }
 
       // Replace simple toast with detailed modal
-      Swal.fire({
-        title: "Kode OTP Terkirim!",
-        icon: "success",
-        html: `
-          <div class="text-left">
-            <p class="mb-2">Kode OTP telah dikirim ke: <strong>${email}</strong></p>
-            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 my-3">
-              <p class="font-medium">Tips Menemukan Kode OTP:</p>
-              <ul class="list-disc pl-5 mt-1 text-sm">
-                <li>Periksa folder <strong>Spam</strong> atau <strong>Junk</strong> jika tidak ada di Kotak Masuk</li>
-                <li>Kode OTP berlaku selama 2 menit</li>
-                <li>Kirim ulang kode jika belum menerima</li>
-              </ul>
-            </div>
-          </div>
-        `,
-        confirmButtonColor: "#FEBF00",
-        confirmButtonText: "Lanjutkan",
-      });
-
-      // Ganti dengan endpoint yang meminta OTP
-      const registerResponse = await fetch(
+      const response = await fetch(
         `${backendUrl}/api/auth/request-otp?email=${encodeURIComponent(email)}`,
         {
           method: "POST",
@@ -412,10 +461,52 @@ const LoginScreen = ({
         }
       );
 
-      if (!registerResponse.ok) {
-        const errorText = await registerResponse.text();
+      if (!response.ok) {
+        const errorText = await response.text();
         throw new Error(errorText || "Gagal mengirim OTP");
       }
+
+      const responseData = await response.json();
+      const isDevMode = responseData.devMode === true;
+
+      Swal.fire({
+        title: isDevMode
+          ? "Kode OTP Dibuat! (Mode Development)"
+          : "Kode OTP Terkirim!",
+        icon: isDevMode ? "info" : "success",
+        html: isDevMode
+          ? `
+            <div class="text-left">
+              <p class="mb-2">Kode OTP untuk: <strong>${email}</strong> telah dibuat.</p>
+              <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 my-3">
+                <p class="font-medium">📝 Cara Melihat Kode OTP:</p>
+                <ol class="list-decimal pl-5 mt-1 text-sm">
+                  <li>Buka <strong>console/terminal backend</strong></li>
+                  <li>Cari log dengan format:<br>
+                      <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-size: 12px;">OTP CODE: XXXXXX</code>
+                  </li>
+                  <li>Masukkan kode 6 digit tersebut</li>
+                </ol>
+              </div>
+              <p class="text-xs text-gray-500 mt-2">⏱️ Kode berlaku selama 10 menit</p>
+            </div>
+          `
+          : `
+            <div class="text-left">
+              <p class="mb-2">Kode OTP telah dikirim ke: <strong>${email}</strong></p>
+              <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 my-3">
+                <p class="font-medium">Tips Menemukan Kode OTP:</p>
+                <ul class="list-disc pl-5 mt-1 text-sm">
+                  <li>Periksa folder <strong>Spam</strong> atau <strong>Junk</strong> jika tidak ada di Kotak Masuk</li>
+                  <li>Kode OTP berlaku selama 2 menit</li>
+                  <li>Kirim ulang kode jika belum menerima</li>
+                </ul>
+              </div>
+            </div>
+          `,
+        confirmButtonColor: "#FEBF00",
+        confirmButtonText: "Lanjutkan",
+      });
 
       // Simpan data registrasi sementara
       setRegistrationData({ username, email, password, phoneNumber });
@@ -598,10 +689,18 @@ const LoginScreen = ({
       setOtpTimer(120);
       setIsResendDisabled(true);
 
+      const resendData = await resendResponse.json();
+      const isDevMode = resendData.devMode === true;
+
       Swal.fire({
-        title: "OTP Terkirim Ulang!",
-        text: "Kami telah mengirimkan kode OTP baru ke email Anda",
-        icon: "success",
+        title: isDevMode ? "OTP Baru Dibuat!" : "OTP Terkirim Ulang!",
+        html: isDevMode
+          ? `Kode OTP baru telah dibuat.<br><br>
+             <div style="background-color: #d1ecf1; padding: 10px; border-radius: 6px; border-left: 4px solid #0c5460;">
+               <strong>💡 Cek console backend untuk melihat kode OTP baru</strong>
+             </div>`
+          : "Kami telah mengirimkan kode OTP baru ke email Anda",
+        icon: isDevMode ? "info" : "success",
         confirmButtonColor: "#FEBF00",
       });
     } catch (error) {
@@ -672,8 +771,14 @@ const LoginScreen = ({
     setIsAdmin(false);
     setRoomId("");
 
-    // Hapus cookie isLoggedIn
+    // Hapus semua cookies terkait autentikasi
     Cookies.remove("isLoggedIn", { path: "/" });
+    Cookies.remove("userRole", { path: "/" });
+    Cookies.remove("userRoomId", { path: "/" });
+
+    // Hapus localStorage
+    localStorage.removeItem("userData");
+    localStorage.removeItem("roomId");
 
     // Hapus cookie auth dari server dengan API logout
     axios
@@ -684,6 +789,9 @@ const LoginScreen = ({
           withCredentials: true,
         }
       )
+      .catch((error) => {
+        console.error("Logout error:", error);
+      })
       .finally(() => {
         navigate("/");
       });

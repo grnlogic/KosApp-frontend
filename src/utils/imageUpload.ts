@@ -21,7 +21,6 @@ const deletePreviousProfileImage = async (
     if (existingFiles && existingFiles.length > 0) {
       const filesToRemove = existingFiles.map((file) => file.name);
 
-      console.log("Removing previous profile images:", filesToRemove);
 
       const { error: removeError } = await supabase.storage
         .from("kos-images")
@@ -77,7 +76,6 @@ export const uploadImage = async (
   const fileName = `room_${roomId}_profile.${fileExt}`;
   const filePath = fileName; // Store directly in the root of the bucket
 
-  console.log(`Uploading image to path: ${filePath}`);
 
   try {
     // Delete any previous profile image for this room
@@ -96,14 +94,12 @@ export const uploadImage = async (
       return null;
     }
 
-    console.log("Upload successful:", data);
 
     // Get the public URL
     const { data: publicUrlData } = supabase.storage
       .from("kos-images")
       .getPublicUrl(filePath);
 
-    console.log("Public URL data:", publicUrlData);
 
     return publicUrlData.publicUrl;
   } catch (err) {

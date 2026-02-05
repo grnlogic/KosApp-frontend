@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bed,
@@ -19,6 +19,21 @@ import EditInfoKamar from "./Edit Info Kamar";
 import Pengumuman from "./pengumuman";
 import AkunPenghuni from "./AkunPenghuni";
 import AdminHome from "./AdminHome";
+import {
+  checkAuthenticationStatus,
+  verifyTokenWithBackend,
+  clearAuthData,
+} from "../../utils/authLogger"; // Import helper untuk pengecekan token
+import { API_BASE_URL } from "../../data/Config"; // Import untuk API base URL
+
+// Expose function ke window object untuk debugging di console
+declare global {
+  interface Window {
+    checkAuth: () => any;
+    verifyToken: () => Promise<any>;
+    clearAuth: () => void;
+  }
+}
 
 const Beranda = () => {
   const [activeMenu, setActiveMenu] = useState("home");
@@ -26,6 +41,109 @@ const Beranda = () => {
   const navigate = useNavigate();
   const welcomeText = "ADMIN PORTAL";
   const typingText = welcomeText;
+
+  // === PENGUJIAN: Cek status autentikasi saat halaman dimuat ===
+  useEffect(() => {
+    console.log("\n");
+    console.log(
+      "╔════════════════════════════════════════════════════════════════"
+    );
+    console.log("║ 🔐 ADMIN PORTAL - AUTOMATIC TOKEN VERIFICATION");
+    console.log(
+      "╠════════════════════════════════════════════════════════════════"
+    );
+    console.log("║ Page: Beranda Admin");
+    console.log("║ Loading Time:", new Date().toISOString());
+    console.log(
+      "╚════════════════════════════════════════════════════════════════"
+    );
+    console.log("\n");
+
+    // Setup global functions untuk debugging di console
+    window.checkAuth = checkAuthenticationStatus;
+    window.verifyToken = () => verifyTokenWithBackend(API_BASE_URL);
+    window.clearAuth = clearAuthData;
+
+    console.log("🛠️ DEBUG TOOLS: Gunakan function berikut di console:");
+    console.log(
+      "   - window.checkAuth()      → Cek status autentikasi lengkap"
+    );
+    console.log(
+      "   - window.verifyToken()    → Verifikasi token dengan backend"
+    );
+    console.log("   - window.clearAuth()      → Hapus semua data autentikasi");
+    console.log("\n");
+
+    // Jalankan pengecekan autentikasi lengkap
+    const authStatus = checkAuthenticationStatus();
+
+    console.log("\n");
+    console.log(
+      "╔════════════════════════════════════════════════════════════════"
+    );
+    console.log("║ 🔍 VALIDATION RESULT");
+    console.log(
+      "╠════════════════════════════════════════════════════════════════"
+    );
+
+    // Validasi apakah user adalah admin
+    if (!authStatus.isAuthenticated) {
+      console.log("║ Status: ❌ FAILED - User tidak terautentikasi");
+      console.log("║ Action: Redirect ke halaman login");
+      console.log(
+        "╚════════════════════════════════════════════════════════════════"
+      );
+      console.warn("⚠️ REDIRECT: User akan diarahkan ke login page");
+      navigate("/");
+    } else if (authStatus.localStorage.userData?.role !== "ADMIN") {
+      console.log("║ Status: ⚠️ WARNING - User bukan admin");
+      console.log("║ Current Role:", authStatus.localStorage.userData?.role);
+      console.log("║ Expected Role: ADMIN");
+      console.log("║ Action: Akses ditolak atau perlu redirect");
+      console.log(
+        "╚════════════════════════════════════════════════════════════════"
+      );
+      console.warn(
+        "⚠️ UNAUTHORIZED: User role tidak sesuai untuk admin portal"
+      );
+      // Uncomment untuk redirect non-admin
+      // navigate("/");
+    } else {
+      console.log("║ Status: ✅ SUCCESS - Admin terautentikasi dengan benar");
+      console.log("║ Username:", authStatus.localStorage.userData?.username);
+      console.log("║ Email:", authStatus.localStorage.userData?.email);
+      console.log("║ Role:", authStatus.localStorage.userData?.role);
+      console.log("║ Login Time:", authStatus.localStorage.userData?.loginTime);
+      console.log("║");
+      console.log("║ 📊 Token & Session Info:");
+      console.log(
+        "║  - HTTP-Only Cookie: Set by backend (tidak bisa dibaca JS)"
+      );
+      console.log(
+        "║  - Client Cookies: isLoggedIn =",
+        authStatus.cookies.isLoggedIn
+      );
+      console.log("║  - LocalStorage: Data tersimpan dengan benar");
+      console.log(
+        "║  - Data Consistency:",
+        authStatus.consistency.roleMatches &&
+          authStatus.consistency.roomIdMatches
+          ? "✅ MATCH"
+          : "⚠️ MISMATCH"
+      );
+      console.log(
+        "╚════════════════════════════════════════════════════════════════"
+      );
+      console.log("\n");
+      console.log(
+        "💡 TIP: Gunakan fungsi checkAuthenticationStatus() di console untuk mengecek ulang kapan saja"
+      );
+      console.log(
+        "   Contoh: window.checkAuth = () => checkAuthenticationStatus();"
+      );
+      console.log("\n");
+    }
+  }, [navigate]);
 
   const handleLogout = () => {
     navigate("/");

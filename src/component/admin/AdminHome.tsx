@@ -44,7 +44,7 @@ ChartJS.register(
   ArcElement
 );
 
-const API_BASE_URL = "https://manage-kost-production.up.railway.app";
+const API_BASE_URL = "http://141.11.25.167:8080";
 
 interface SummaryData {
   totalRooms: number;
@@ -141,6 +141,7 @@ const HomePanel: React.FC = () => {
           rulesResponse,
           usersResponse,
           cleaningResponse,
+          pembayaranResponse,
         ] = await Promise.all([
           axios.get(`${API_BASE_URL}/api/kamar`),
           axios.get(`${API_BASE_URL}/api/pengumuman`),
@@ -148,6 +149,9 @@ const HomePanel: React.FC = () => {
           axios.get(`${API_BASE_URL}/api/peraturan`),
           axios.get(`${API_BASE_URL}/api/users`),
           axios.get(`${API_BASE_URL}/api/kebersihan`),
+          axios
+            .get(`${API_BASE_URL}/api/pembayaran`)
+            .catch(() => ({ data: [] })), // Optional, use fallback if fails
         ]);
 
         // Process all the data
@@ -157,12 +161,9 @@ const HomePanel: React.FC = () => {
         const rules = rulesResponse.data;
         const userData = usersResponse.data;
         const cleaningData = cleaningResponse.data || [];
+        const pembayaranData = pembayaranResponse.data || [];
 
         // Debug logs to verify data is being received
-        console.log("Rooms data:", rooms);
-        console.log("Announcements data:", announcements);
-        console.log("Users data:", userData);
-        console.log("Cleaning data:", cleaningData);
 
         // Store users data for later use
         setUsers(userData);
@@ -178,23 +179,43 @@ const HomePanel: React.FC = () => {
         const occupancyRate =
           totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
-        // Calculate payments with real data
-        const totalPayments = rooms.reduce(
-          (sum: number, room: any) => sum + (room.hargaBulanan || 0),
-          0
-        );
+        // Calculate payments with real data from pembayaran API
+        let totalPayments = 0;
+        let pendingPayments = 0;
 
-        // Process pending payments
-        const pendingPayments = rooms
-          .filter(
-            (room: any) =>
-              room.statusPembayaran === "Belum Bayar" ||
-              room.statusPembayaran === "Menunggu"
-          )
-          .reduce(
+        if (pembayaranData.length > 0) {
+          // Use pembayaran data if available
+          totalPayments = pembayaranData.reduce(
+            (sum: number, payment: any) => sum + (payment.nominal || 0),
+            0
+          );
+          pendingPayments = pembayaranData
+            .filter(
+              (payment: any) =>
+                payment.status === "Belum Bayar" ||
+                payment.status === "Menunggu"
+            )
+            .reduce(
+              (sum: number, payment: any) => sum + (payment.nominal || 0),
+              0
+            );
+        } else {
+          // Fallback to rooms data
+          totalPayments = rooms.reduce(
             (sum: number, room: any) => sum + (room.hargaBulanan || 0),
             0
           );
+          pendingPayments = rooms
+            .filter(
+              (room: any) =>
+                room.statusPembayaran === "Belum Bayar" ||
+                room.statusPembayaran === "Menunggu"
+            )
+            .reduce(
+              (sum: number, room: any) => sum + (room.hargaBulanan || 0),
+              0
+            );
+        }
 
         // Calculate pending cleanings from actual cleaning tasks data
         const pendingCleanings = cleaningData.length;
@@ -207,16 +228,28 @@ const HomePanel: React.FC = () => {
           ).length || 0;
 
         // Create payments data for activities
-        const paymentsData = rooms.map((room: any) => {
-          const user = userData.find((u: UserData) => u.roomId === room.id);
-          return {
-            id: room.id,
-            kamar: room.nomorKamar || `Kamar ${room.id}`,
-            penghuni: user?.username || "Penghuni",
-            nominal: `Rp ${room.hargaBulanan?.toLocaleString("id-ID") || 0}`,
-            status: room.statusPembayaran || "Belum Bayar",
-          };
-        });
+        let paymentsData: PaymentData[] = [];
+        if (pembayaranData.length > 0) {
+          paymentsData = pembayaranData.map((payment: any) => ({
+            id: payment.id,
+            kamar: payment.kamar || `Kamar ${payment.kamarId}`,
+            penghuni: payment.penghuni || "Penghuni",
+            nominal: `Rp ${payment.nominal?.toLocaleString("id-ID") || 0}`,
+            status: payment.status || "Belum Bayar",
+          }));
+        } else {
+          // Fallback to rooms data
+          paymentsData = rooms.map((room: any) => {
+            const user = userData.find((u: UserData) => u.roomId === room.id);
+            return {
+              id: room.id,
+              kamar: room.nomorKamar || `Kamar ${room.id}`,
+              penghuni: user?.username || "Penghuni",
+              nominal: `Rp ${room.hargaBulanan?.toLocaleString("id-ID") || 0}`,
+              status: room.statusPembayaran || "Belum Bayar",
+            };
+          });
+        }
         setPayments(paymentsData);
 
         // Update summary data with real values
@@ -323,8 +356,6 @@ const HomePanel: React.FC = () => {
     const activities: Activity[] = [];
     const now = new Date();
 
-    console.log("Generating activities from real data");
-
     // 1. Process announcements - most important since user mentioned this
     if (announcements && announcements.length > 0) {
       // Sort announcements by date (most recent first)
@@ -358,15 +389,7 @@ const HomePanel: React.FC = () => {
           ),
         });
       });
-
-      console.log(
-        `Added ${Math.min(
-          3,
-          sortedAnnouncements.length
-        )} announcements to activities`
-      );
     } else {
-      console.log("No announcements found");
     }
 
     // 2. Process room status changes
@@ -391,10 +414,7 @@ const HomePanel: React.FC = () => {
           timestamp: new Date(now.getTime() - (idx + 2) * 3600000),
         });
       });
-
-      console.log(`Added ${Math.min(2, occupiedRooms.length)} room activities`);
     } else {
-      console.log("No rooms found");
     }
 
     // 3. Process cleaning tasks
@@ -408,12 +428,7 @@ const HomePanel: React.FC = () => {
           timestamp: new Date(now.getTime() - 3 * 3600000),
         });
       });
-
-      console.log(
-        `Added ${Math.min(2, cleaningTasks.length)} cleaning activities`
-      );
     } else {
-      console.log("No cleaning tasks found");
     }
 
     // 4. Process payments (derived from rooms with status)
@@ -434,7 +449,6 @@ const HomePanel: React.FC = () => {
       });
 
     activities.push(...paymentsActivity);
-    console.log(`Added ${paymentsActivity.length} payment activities`);
 
     // 5. Process FAQs
     if (faqs && faqs.length > 0) {
@@ -449,8 +463,6 @@ const HomePanel: React.FC = () => {
         time: "1 hari yang lalu",
         timestamp: new Date(now.getTime() - 24 * 3600000),
       });
-
-      console.log("Added FAQ activity");
     }
 
     // 6. Process rules
@@ -466,8 +478,6 @@ const HomePanel: React.FC = () => {
         time: "2 hari yang lalu",
         timestamp: new Date(now.getTime() - 48 * 3600000),
       });
-
-      console.log("Added rule activity");
     }
 
     // Sort activities by timestamp (newest first)
@@ -476,9 +486,6 @@ const HomePanel: React.FC = () => {
       const timeB = b.timestamp ? b.timestamp.getTime() : 0;
       return timeB - timeA;
     });
-
-    console.log(`Total activities generated: ${activities.length}`);
-    console.log("Activities:", activities);
 
     setRecentActivities(activities);
   };

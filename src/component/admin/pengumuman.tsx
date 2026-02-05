@@ -17,7 +17,7 @@ const EditPengumuman: React.FC = () => {
       setLoading(true);
       try {
         const response = await fetch(
-          `https://manage-kost-production.up.railway.app/api/pengumuman/1`
+          `http://141.11.25.167:8080/api/pengumuman/1`
         ); // Replace `1` with dynamic ID
         const data = await response.json();
         setTitle(data.judul);
@@ -39,8 +39,8 @@ const EditPengumuman: React.FC = () => {
     try {
       const method = pengumumanId ? "PUT" : "POST";
       const url = pengumumanId
-        ? `https://manage-kost-production.up.railway.app/api/pengumuman/${pengumumanId}`
-        : `https://manage-kost-production.up.railway.app/api/pengumuman`;
+        ? `http://141.11.25.167:8080/api/pengumuman/${pengumumanId}`
+        : `http://141.11.25.167:8080/api/pengumuman`;
 
       const response = await fetch(url, {
         method: method,

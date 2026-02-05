@@ -19,6 +19,7 @@ import {
   updateKebersihan,
   deleteKebersihan,
 } from "../../services/kebersihanService";
+import { roomService, Room } from "../../services/roomService";
 import WaktuPelaksanaan from "../../model/WaktuPelaksanaan";
 import Swal from "sweetalert2";
 import { JSX } from "react/jsx-runtime";
@@ -48,22 +49,21 @@ const dailyTasks = [
 
 const JadwalKebersihan: React.FC = () => {
   const [formData, setFormData] = useState<ScheduleData>({
-    room: "Kamar 101",
+    room: "",
     areas: [],
     notes: "",
   });
   const [savedData, setSavedData] = useState<ScheduleData | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [taskSchedule, setTaskSchedule] = useState(
-    dailyTasks.map((task) => ({ ...task, room: "Kamar 101" }))
+    dailyTasks.map((task) => ({ ...task, room: "" }))
   );
   const [isTaskMenuOpen, setIsTaskMenuOpen] = useState(false);
   const [kebersihanList, setKebersihanList] = useState<Kebersihan[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-
-  const rooms = ["Kamar 1", "Kamar 2", "Kamar 3", "Kamar 4"];
   const cleaningAreas = [
     { id: "parkingArea", label: "Area Parkir", backendField: "areaParking" },
     { id: "terrace", label: "Teras", backendField: "areaTerrace" },
@@ -72,8 +72,32 @@ const JadwalKebersihan: React.FC = () => {
   ];
 
   useEffect(() => {
+    fetchRoomsData();
     fetchKebersihanData();
   }, []);
+
+  const fetchRoomsData = async () => {
+    try {
+      const roomsData = await roomService.getAllRooms();
+      setRooms(roomsData);
+
+      // Set default room if available and formData.room is empty
+      if (roomsData.length > 0 && !formData.room) {
+        setFormData((prev) => ({
+          ...prev,
+          room: roomsData[0].nomorKamar,
+        }));
+      }
+    } catch (err) {
+      console.error("Error fetching rooms:", err);
+      Swal.fire({
+        title: "Error!",
+        text: "Gagal mengambil data kamar. Silakan coba lagi.",
+        icon: "error",
+        confirmButtonColor: "#3085d6",
+      });
+    }
+  };
 
   const fetchKebersihanData = async () => {
     setIsLoading(true);
@@ -120,7 +144,7 @@ const JadwalKebersihan: React.FC = () => {
 
   const handleReset = () => {
     setFormData({
-      room: "Kamar 101",
+      room: rooms.length > 0 ? rooms[0].nomorKamar : "",
       areas: [],
       notes: "",
     });
@@ -171,7 +195,7 @@ const JadwalKebersihan: React.FC = () => {
 
       // Convert frontend model to backend model
       const kebersihanData: Kebersihan = {
-        roomNumber: formData.room,
+        roomNumber: formData.room, // Use room number directly (e.g., "001")
         areaParking: formData.areas.includes("parkingArea"),
         areaTerrace: formData.areas.includes("terrace"),
         areaCorridor: formData.areas.includes("corridor"),
@@ -186,11 +210,11 @@ const JadwalKebersihan: React.FC = () => {
       if (formData.id) {
         // Update existing record
         savedKebersihan = await updateKebersihan(formData.id, kebersihanData);
-        successMessage = `Data berhasil diperbarui untuk ${formData.room}!`;
+        successMessage = `Data berhasil diperbarui untuk kamar ${formData.room}!`;
       } else {
         // Create new record
         savedKebersihan = await createKebersihan(kebersihanData);
-        successMessage = `Data berhasil disimpan untuk ${formData.room}!`;
+        successMessage = `Data berhasil disimpan untuk kamar ${formData.room}!`;
       }
 
       // Convert back to frontend model for state
@@ -399,8 +423,13 @@ const JadwalKebersihan: React.FC = () => {
                     <button
                       className="w-full p-3 border border-gray-300 rounded-lg flex justify-between items-center bg-white focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      disabled={rooms.length === 0}
                     >
-                      <span>{formData.room}</span>
+                      <span>
+                        {rooms.length === 0
+                          ? "Tidak ada kamar tersedia"
+                          : formData.room || "Pilih Kamar"}
+                      </span>
                       <ChevronDown
                         size={20}
                         className={`transition-transform ${
@@ -413,14 +442,36 @@ const JadwalKebersihan: React.FC = () => {
                       <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {rooms.map((room) => (
                           <div
-                            key={room}
-                            className="p-3 hover:bg-blue-50 cursor-pointer"
+                            key={room.id}
+                            className="p-3 hover:bg-blue-50 cursor-pointer transition-colors"
                             onClick={() => {
-                              setFormData((prev) => ({ ...prev, room }));
+                              setFormData((prev) => ({
+                                ...prev,
+                                room: room.nomorKamar,
+                              }));
                               setIsDropdownOpen(false);
                             }}
                           >
-                            {room}
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">
+                                {room.nomorKamar}
+                              </span>
+                              <span
+                                className={`text-xs px-2 py-1 rounded-full ${
+                                  room.status === "kosong"
+                                    ? "bg-green-100 text-green-700"
+                                    : room.status === "terisi"
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-yellow-100 text-yellow-700"
+                                }`}
+                              >
+                                {room.status === "kosong"
+                                  ? "Kosong"
+                                  : room.status === "terisi"
+                                  ? "Terisi"
+                                  : "Pending"}
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -538,7 +589,7 @@ const JadwalKebersihan: React.FC = () => {
                   </button>
                 </h2>
               </div>
-             
+
               <div
                 className={`transition-all duration-300 ease-in-out overflow-hidden ${
                   isPreviewOpen ? "max-h-[1000px]" : "max-h-0"
@@ -550,31 +601,43 @@ const JadwalKebersihan: React.FC = () => {
                       <FileText className="h-4 w-4 mr-2 text-blue-500" />
                       Detail Jadwal
                     </h3>
-                    
+
                     <div className="text-sm text-gray-600 space-y-2">
-                      <p><span className="font-medium">Kamar:</span> {formData.room}</p>
-                      <p><span className="font-medium">Area:</span> {
-                        formData.areas.length > 0 
-                          ? formData.areas.map(area => {
-                              const areaLabel = cleaningAreas.find(a => a.id === area)?.label;
-                              return areaLabel;
-                            }).join(', ')
-                          : 'Belum ada area dipilih'
-                      }</p>
-                      <p><span className="font-medium">Catatan:</span> {
-                        formData.notes 
-                          ? formData.notes 
-                          : 'Tidak ada catatan'
-                      }</p>
+                      <p>
+                        <span className="font-medium">Kamar:</span>{" "}
+                        {formData.room}
+                      </p>
+                      <p>
+                        <span className="font-medium">Area:</span>{" "}
+                        {formData.areas.length > 0
+                          ? formData.areas
+                              .map((area) => {
+                                const areaLabel = cleaningAreas.find(
+                                  (a) => a.id === area
+                                )?.label;
+                                return areaLabel;
+                              })
+                              .join(", ")
+                          : "Belum ada area dipilih"}
+                      </p>
+                      <p>
+                        <span className="font-medium">Catatan:</span>{" "}
+                        {formData.notes ? formData.notes : "Tidak ada catatan"}
+                      </p>
                     </div>
                   </div>
-                  
+
                   {kebersihanList.length > 0 && (
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h3 className="font-medium text-gray-800 mb-2">Jadwal Terbaru</h3>
+                      <h3 className="font-medium text-gray-800 mb-2">
+                        Jadwal Terbaru
+                      </h3>
                       <div className="max-h-60 overflow-y-auto">
                         {kebersihanList.slice(0, 3).map((item, idx) => (
-                          <div key={idx} className="border-b border-gray-200 py-2 last:border-b-0">
+                          <div
+                            key={idx}
+                            className="border-b border-gray-200 py-2 last:border-b-0"
+                          >
                             <p className="font-medium">{item.roomNumber}</p>
                             <p className="text-sm text-gray-600">
                               {[
@@ -582,7 +645,9 @@ const JadwalKebersihan: React.FC = () => {
                                 item.areaCorridor ? "Koridor" : null,
                                 item.areaTerrace ? "Teras" : null,
                                 item.areaGarden ? "Taman" : null,
-                              ].filter(Boolean).join(', ')}
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
                             </p>
                           </div>
                         ))}

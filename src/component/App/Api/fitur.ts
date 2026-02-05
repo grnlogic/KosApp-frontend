@@ -1,9 +1,9 @@
-export type fitur = {
+export type Fitur = {
   id: string;
   title: string;
   description: string;
 };
-export const fitur: fitur[] = [
+export const fitur: Fitur[] = [
   {
     id: "1",
     title: "Manajemen Kamar",

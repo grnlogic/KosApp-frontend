@@ -51,7 +51,6 @@ axiosInstance.interceptors.response.use(
             // Token sudah diperbarui dalam HTTP-only cookies oleh server
             isRefreshing = false;
             onRefreshed(true);
-            console.log("Token berhasil diperbarui");
             
             // Coba lagi request asli
             return axiosInstance(originalRequest);
@@ -62,7 +61,6 @@ axiosInstance.interceptors.response.use(
           
           // Hapus cookie isLoggedIn hanya jika refresh benar-benar gagal
           if (axios.isAxiosError(refreshError) && refreshError.response && refreshError.response.status === 401) {
-            console.log("Token tidak dapat diperbarui, menghapus sesi");
             Cookies.remove("isLoggedIn", { path: "/" });
             window.location.href = "/";
           }

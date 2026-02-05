@@ -14,7 +14,7 @@ const Announcement = () => {
     const fetchAnnouncement = async () => {
       try {
         const response = await fetch(
-          "https://manage-kost-production.up.railway.app/api/pengumuman/1"
+          "http://141.11.25.167:8080/api/pengumuman/1"
         ); // Replace `1` with dynamic ID if needed
         const data = await response.json();
         setAnnouncement({
@@ -104,9 +104,7 @@ const Rules = () => {
     const fetchPeraturan = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(
-          "https://manage-kost-production.up.railway.app/api/peraturan"
-        );
+        const response = await fetch("http://141.11.25.167:8080/api/peraturan");
 
         if (!response.ok) {
           throw new Error("Failed to fetch peraturan data");

@@ -41,9 +41,7 @@ const FAQ = () => {
   const fetchFaqs = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(
-        "https://manage-kost-production.up.railway.app/api/faqs"
-      );
+      const response = await axios.get("http://141.11.25.167:8080/api/faqs");
       // Pastikan properti yang diterima sesuai dengan struktur FAQItem
       const formattedFaqs = response.data.map((faq: any) => ({
         id: faq.id,
@@ -82,7 +80,7 @@ const FAQ = () => {
 
     try {
       const response = await axios.put(
-        `https://manage-kost-production.up.railway.app/api/faqs/${currentFaq.id}`,
+        `http://141.11.25.167:8080/api/faqs/${currentFaq.id}`,
         {
           pertanyaan: editedPertanyaan,
           jawaban: editedJawaban,
@@ -120,13 +118,10 @@ const FAQ = () => {
 
   const saveNewFaq = async () => {
     try {
-      const response = await axios.post(
-        "https://manage-kost-production.up.railway.app/api/faqs",
-        {
-          pertanyaan: newPertanyaan,
-          jawaban: newJawaban,
-        }
-      );
+      const response = await axios.post("http://141.11.25.167:8080/api/faqs", {
+        pertanyaan: newPertanyaan,
+        jawaban: newJawaban,
+      });
 
       if (response.status === 201) {
         Swal.fire({
@@ -175,9 +170,7 @@ const FAQ = () => {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          await axios.delete(
-            `https://manage-kost-production.up.railway.app/api/faqs/${faq.id}`
-          );
+          await axios.delete(`http://141.11.25.167:8080/api/faqs/${faq.id}`);
           Swal.fire("Berhasil!", "FAQ berhasil dihapus!", "success");
           fetchFaqs();
         } catch (error) {
